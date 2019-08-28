@@ -20,7 +20,7 @@ class KotlinNativeCompilationFactory(
         get() = KotlinNativeCompilation::class.java
 
     override fun create(name: String): KotlinNativeCompilation =
-        KotlinNativeCompilation(target, name).apply {
+        KotlinNativeCompilation(target, target.konanTarget, name).apply {
             if (name == KotlinCompilation.TEST_COMPILATION_NAME) {
                 friendCompilationName = KotlinCompilation.MAIN_COMPILATION_NAME
             }
