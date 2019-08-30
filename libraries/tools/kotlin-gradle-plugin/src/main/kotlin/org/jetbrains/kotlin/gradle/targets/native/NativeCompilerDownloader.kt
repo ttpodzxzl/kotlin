@@ -6,14 +6,17 @@
 @file:Suppress("PackageDirectoryMismatch") // Old package for compatibility
 package org.jetbrains.kotlin.gradle.utils
 
+import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.ArtifactRepository
+import org.gradle.api.artifacts.repositories.IvyArtifactRepository
 import org.gradle.api.artifacts.repositories.IvyPatternRepositoryLayout
 import org.gradle.api.file.FileTree
 import org.gradle.api.logging.Logger
 import org.jetbrains.kotlin.compilerRunner.KonanCompilerRunner
 import org.jetbrains.kotlin.compilerRunner.konanVersion
 import org.jetbrains.kotlin.gradle.logging.kotlinInfo
+import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider
 import org.jetbrains.kotlin.konan.KonanVersion
 import org.jetbrains.kotlin.konan.MetaVersion
 import org.jetbrains.kotlin.konan.target.HostManager
@@ -39,11 +42,19 @@ class NativeCompilerDownloader(
     private val logger: Logger
         get() = project.logger
 
+    // We provide restricted distributions only for Mac.
+    private val restrictedDistribution: Boolean
+        get() = HostManager.hostIsMac && PropertiesProvider(project).nativeRestrictedDistribution ?: false
+
     private val simpleOsName: String
         get() = HostManager.simpleOsName()
 
     private val dependencyName: String
-        get() = "kotlin-native-$simpleOsName"
+        get() = if (restrictedDistribution) {
+            "kotlin-native-restricted-$simpleOsName"
+        } else {
+            "kotlin-native-$simpleOsName"
+        }
 
     private val dependencyNameWithVersion: String
         get() = "$dependencyName-$compilerVersion"
@@ -71,9 +82,8 @@ class NativeCompilerDownloader(
     private fun setupRepo(repoUrl: String): ArtifactRepository {
         return project.repositories.ivy { repo ->
             repo.setUrl(repoUrl)
-            repo.layout("pattern") {
-                val layout = it as IvyPatternRepositoryLayout
-                layout.artifact("[artifact]-[revision].[ext]")
+            repo.patternLayoutCompatible {
+                artifact("[artifact]-[revision].[ext]")
             }
             repo.metadataSources {
                 it.artifact()

@@ -32,6 +32,7 @@ import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.frontend.di.createContainerForBodyResolve
 import org.jetbrains.kotlin.idea.caches.resolve.CodeFragmentAnalyzer
 import org.jetbrains.kotlin.idea.caches.resolve.util.analyzeControlFlow
+import org.jetbrains.kotlin.idea.caches.trackers.KotlinCodeBlockModificationListener
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.TargetPlatform
 import org.jetbrains.kotlin.psi.*
@@ -77,7 +78,7 @@ class ResolveElementCache(
             CachedValueProvider<MutableMap<KtElement, CachedFullResolve>> {
                 CachedValueProvider.Result.create(
                     ContainerUtil.createConcurrentWeakKeySoftValueMap<KtElement, CachedFullResolve>(),
-                    PsiModificationTracker.OUT_OF_CODE_BLOCK_MODIFICATION_COUNT,
+                    KotlinCodeBlockModificationListener.getInstance(project).kotlinOutOfCodeBlockTracker,
                     resolveSession.exceptionTracker
                 )
             },
@@ -719,7 +720,12 @@ class ResolveElementCache(
         ).get()
     }
 
-    // All additional resolve should be done to separate trace
+    /*
+    Note that currently we *have* to re-create container with custom trace in order to disallow resolution of
+    bodies in top-level trace (trace from DI-container).
+    Resolving bodies in top-level trace may lead to memory leaks and incorrect resolution, because top-level
+    trace isn't invalidated on in-block modifications (while body resolution surely does)
+    */
     private fun createDelegatingTrace(resolveElement: KtElement, filter: BindingTraceFilter): BindingTrace {
         return resolveSession.storageManager.createSafeTrace(
             DelegatingBindingTrace(

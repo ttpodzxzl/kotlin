@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.ReceiverParameterDescriptor
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.IrElement
@@ -55,6 +56,8 @@ val IrDeclaration.parents: Sequence<IrDeclarationParent>
 
 object BOUND_VALUE_PARAMETER: IrDeclarationOriginImpl("BOUND_VALUE_PARAMETER")
 
+object BOUND_RECEIVER_PARAMETER: IrDeclarationOriginImpl("BOUND_RECEIVER_PARAMETER")
+
 class LocalDeclarationsLowering(
     val context: BackendContext,
     val localNameProvider: LocalNameProvider = LocalNameProvider.DEFAULT,
@@ -84,7 +87,7 @@ class LocalDeclarationsLowering(
         abstract val declaration: IrFunction
         abstract val transformedDeclaration: IrFunction
 
-        val capturedValueToParameter: MutableMap<IrValueDeclaration, IrValueParameter> = HashMap()
+        val capturedValueToParameter: MutableMap<IrValueDeclaration, IrValueParameter> = mutableMapOf()
 
         override fun irGet(startOffset: Int, endOffset: Int, valueDeclaration: IrValueDeclaration): IrExpression? {
             val parameter = capturedValueToParameter[valueDeclaration] ?: return null
@@ -111,7 +114,9 @@ class LocalDeclarationsLowering(
     private class LocalClassContext(val declaration: IrClass) : LocalContext() {
         lateinit var closure: Closure
 
-        val capturedValueToField: MutableMap<IrValueDeclaration, IrField> = HashMap()
+        // NOTE: This map is iterated over in `rewriteClassMembers` and we're relying on
+        // the deterministic iteration order that `mutableMapOf` provides.
+        val capturedValueToField: MutableMap<IrValueDeclaration, IrField> = mutableMapOf()
 
         override fun irGet(startOffset: Int, endOffset: Int, valueDeclaration: IrValueDeclaration): IrExpression? {
             val field = capturedValueToField[valueDeclaration] ?: return null
@@ -218,6 +223,7 @@ class LocalDeclarationsLowering(
                     declaration.valueParameters.filter { it.defaultValue != null }.forEach { argument ->
                         oldParameterToNew[argument]!!.defaultValue = argument.defaultValue
                     }
+                    acceptChildren(SetDeclarationsParentVisitor, this)
                 } ?: super.visitConstructor(declaration)
             }
 
@@ -327,6 +333,7 @@ class LocalDeclarationsLowering(
                 ).also {
                     it.fillArguments2(expression, newCallee)
                     it.copyTypeArgumentsFrom(expression)
+                    it.copyAttributes(expression)
                 }
             }
 
@@ -375,26 +382,26 @@ class LocalDeclarationsLowering(
 
             assert(constructorsCallingSuper.any()) { "Expected at least one constructor calling super; class: $irClass" }
 
-            localClassContext.capturedValueToField.forEach { (capturedValue, field) ->
-                val startOffset = irClass.startOffset
-                val endOffset = irClass.endOffset
-                irClass.declarations.add(field)
+            irClass.declarations += localClassContext.capturedValueToField.values
 
-                for (constructorContext in constructorsCallingSuper) {
-                    val blockBody = constructorContext.declaration.body as? IrBlockBody
-                        ?: throw AssertionError("Unexpected constructor body: ${constructorContext.declaration.body}")
-                    val capturedValueExpression = constructorContext.irGet(startOffset, endOffset, capturedValue)!!
-                    blockBody.statements.add(
-                        0,
+            for (constructorContext in constructorsCallingSuper) {
+                val blockBody = constructorContext.declaration.body as? IrBlockBody
+                    ?: throw AssertionError("Unexpected constructor body: ${constructorContext.declaration.body}")
+
+                // NOTE: It's important to set the fields for captured values in the same order as the arguments,
+                // since `AnonymousObjectTransformer` relies on this ordering.
+                blockBody.statements.addAll(
+                    0,
+                    localClassContext.capturedValueToField.map { (capturedValue, field) ->
                         IrSetFieldImpl(
-                            startOffset, endOffset, field.symbol,
-                            IrGetValueImpl(startOffset, endOffset, irClass.thisReceiver!!.symbol),
-                            capturedValueExpression,
+                            irClass.startOffset, irClass.endOffset, field.symbol,
+                            IrGetValueImpl(irClass.startOffset, irClass.endOffset, irClass.thisReceiver!!.symbol),
+                            constructorContext.irGet(irClass.startOffset, irClass.endOffset, capturedValue)!!,
                             context.irBuiltIns.unitType,
                             STATEMENT_ORIGIN_INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE
                         )
-                    )
-                }
+                    }
+                )
             }
         }
 
@@ -530,8 +537,17 @@ class LocalDeclarationsLowering(
                 val parameterDescriptor = WrappedValueParameterDescriptor()
                 val p = capturedValue.owner
                 IrValueParameterImpl(
-                    p.startOffset, p.endOffset, BOUND_VALUE_PARAMETER, IrValueParameterSymbolImpl(parameterDescriptor),
-                    suggestNameForCapturedValue(p), i, p.type, null, isCrossinline = false, isNoinline = false
+                    p.startOffset,
+                    p.endOffset,
+                    if (p.descriptor is ReceiverParameterDescriptor && newDeclaration is IrConstructor)
+                        BOUND_RECEIVER_PARAMETER else BOUND_VALUE_PARAMETER,
+                    IrValueParameterSymbolImpl(parameterDescriptor),
+                    suggestNameForCapturedValue(p),
+                    i,
+                    p.type,
+                    null,
+                    isCrossinline = false,
+                    isNoinline = false
                 ).also {
                     parameterDescriptor.bind(it)
                     it.parent = newDeclaration

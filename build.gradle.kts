@@ -3,13 +3,11 @@ import org.gradle.plugins.ide.idea.model.IdeaModel
 import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import proguard.gradle.ProGuardTask
-import org.gradle.kotlin.dsl.*
 
 buildscript {
     extra["defaultSnapshotVersion"] = "1.3-SNAPSHOT"
 
-    // when updating please also update JPS artifacts configuration: https://jetbrains.quip.com/zzGUAYSJ6gv3/JPS-Build-update-bootstrap
-    kotlinBootstrapFrom(BootstrapOption.TeamCity("1.3.50-dev-526", onlySuccessBootstrap = false))
+    kotlinBootstrapFrom(BootstrapOption.TeamCity("1.3.60-dev-770", onlySuccessBootstrap = false))
 
     repositories {
         bootstrapKotlinRepo?.let(::maven)
@@ -122,30 +120,19 @@ extra["JDK_9"] = jdkPath("9")
 extra["JDK_10"] = jdkPath("10")
 extra["JDK_11"] = jdkPath("11")
 
-gradle.taskGraph.beforeTask() {
+// allow opening the project without setting up all env variables (see KT-26413)
+if (!kotlinBuildProperties.isInIdeaSync) {
     checkJDK()
 }
 
-var jdkChecked: Boolean = false
 fun checkJDK() {
-    if (jdkChecked) {
-        return
+    val missingEnvVars = JdkMajorVersion.values()
+        .filter { it.isMandatory() && extra[it.name] == jdkNotFoundConst }
+        .mapTo(ArrayList()) { it.name }
+
+    if (missingEnvVars.isNotEmpty()) {
+        throw GradleException("Required environment variables are missing: ${missingEnvVars.joinToString()}")
     }
-
-    val unpresentJdks = JdkMajorVersion.values()
-        .filter { it.isMandatory() }
-        .map { it.name }
-        .filter { extra[it] == jdkNotFoundConst }
-        .toList()
-
-    if (unpresentJdks.isNotEmpty()) {
-        throw GradleException("Please set environment variable" +
-                                      (if (unpresentJdks.size > 1) "s" else "") +
-                                      ": " + unpresentJdks.joinToString() +
-                                      " to point to corresponding JDK installation.")
-    }
-
-    jdkChecked = true
 }
 
 rootProject.apply {
@@ -182,7 +169,7 @@ extra["versions.trove4j"] = "1.0.20181211"
 extra["versions.ktor-network"] = "1.0.1"
 
 if (!project.hasProperty("versions.kotlin-native")) {
-    extra["versions.kotlin-native"] = "1.3-dev-9780"
+    extra["versions.kotlin-native"] = "1.3.50-dev-11052"
 }
 
 val isTeamcityBuild = project.kotlinBuildProperties.isTeamcityBuild
@@ -223,6 +210,7 @@ extra["compilerModules"] = arrayOf(
     ":compiler:ir.backend.common",
     ":compiler:backend.jvm",
     ":compiler:backend.js",
+    ":compiler:backend.wasm",
     ":compiler:ir.serialization.common",
     ":compiler:ir.serialization.js",
     ":kotlin-util-io",
@@ -342,6 +330,7 @@ allprojects {
     configureJvmProject(javaHome!!, jvmTarget!!)
 
     val commonCompilerArgs = listOfNotNull(
+        "-Xuse-experimental=kotlin.Experimental",
         "-Xallow-kotlin-package",
         "-Xread-deserialized-contracts",
         "-Xjvm-default=compatibility",
@@ -374,11 +363,13 @@ allprojects {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
-    task("listArchives") { listConfigurationContents("archives") }
+    tasks {
+        register("listArchives") { listConfigurationContents("archives") }
 
-    task("listRuntimeJar") { listConfigurationContents("runtimeJar") }
+        register("listRuntimeJar") { listConfigurationContents("runtimeJar") }
 
-    task("listDistJar") { listConfigurationContents("distJar") }
+        register("listDistJar") { listConfigurationContents("distJar") }
+    }
 
     afterEvaluate {
         if (javaHome != defaultJavaHome || jvmTarget != defaultJvmTarget) {
@@ -396,10 +387,12 @@ allprojects {
         } catch (_: UnknownDomainObjectException) {
             null
         }?.let { javaConvention ->
-            task("printCompileClasspath") { doFirst { javaConvention.sourceSets["main"].compileClasspath.printClassPath("compile") } }
-            task("printRuntimeClasspath") { doFirst { javaConvention.sourceSets["main"].runtimeClasspath.printClassPath("runtime") } }
-            task("printTestCompileClasspath") { doFirst { javaConvention.sourceSets["test"].compileClasspath.printClassPath("test compile") } }
-            task("printTestRuntimeClasspath") { doFirst { javaConvention.sourceSets["test"].runtimeClasspath.printClassPath("test runtime") } }
+            tasks {
+                register("printCompileClasspath") { doFirst { javaConvention.sourceSets["main"].compileClasspath.printClassPath("compile") } }
+                register("printRuntimeClasspath") { doFirst { javaConvention.sourceSets["main"].runtimeClasspath.printClassPath("runtime") } }
+                register("printTestCompileClasspath") { doFirst { javaConvention.sourceSets["test"].compileClasspath.printClassPath("test compile") } }
+                register("printTestRuntimeClasspath") { doFirst { javaConvention.sourceSets["test"].runtimeClasspath.printClassPath("test runtime") } }
+            }
         }
 
         run configureCompilerClasspath@{
@@ -407,6 +400,9 @@ allprojects {
             configurations.findByName("kotlinCompilerClasspath")?.let {
                 dependencies.add(it.name, files(bootstrapCompilerClasspath))
             }
+
+            configurations.findByName("kotlinCompilerPluginClasspath")
+                ?.exclude("org.jetbrains.kotlin", "kotlin-scripting-compiler-embeddable")
         }
 
         // Aggregate task for build related checks
@@ -427,13 +423,13 @@ gradle.taskGraph.whenReady {
         }
     } else {
         logger.warn("Local build profile is active (IC is on, proguard is off). Use -Pteamcity=true to reproduce TC build")
-        for (task in allTasks) {
-            when (task) {
-                // todo: remove when Gradle 4.10+ is used (Java IC on by default)
-                is JavaCompile -> task.options.isIncremental = true
-                is org.gradle.jvm.tasks.Jar -> task.entryCompression = ZipEntryCompression.STORED
-            }
-        }
+    }
+
+    allTasks.filterIsInstance<org.gradle.jvm.tasks.Jar>().forEach { task ->
+        task.entryCompression = if (kotlinBuildProperties.jarCompression)
+            ZipEntryCompression.DEFLATED
+        else
+            ZipEntryCompression.STORED
     }
 }
 
@@ -453,26 +449,26 @@ val ideaPlugin by task<Task> {
 }
 
 tasks {
-    create("clean") {
+    register("clean") {
         doLast {
             delete("$buildDir/repo")
             delete(distDir)
         }
     }
 
-    create("cleanupArtifacts") {
+    register("cleanupArtifacts") {
         doLast {
             delete(artifactsDir)
         }
     }
 
     listOf("clean", "assemble", "install", "dist").forEach { taskName ->
-        create("coreLibs${taskName.capitalize()}") {
+        register("coreLibs${taskName.capitalize()}") {
             coreLibProjects.forEach { projectName -> dependsOn("$projectName:$taskName") }
         }
     }
 
-    create("coreLibsTest") {
+    register("coreLibsTest") {
         (coreLibProjects + listOf(
             ":kotlin-stdlib:samples",
             ":kotlin-test:kotlin-test-js:kotlin-test-js-it",
@@ -483,17 +479,17 @@ tasks {
         }
     }
 
-    create("gradlePluginTest") {
+    register("gradlePluginTest") {
         gradlePluginProjects.forEach {
             dependsOn("$it:check")
         }
     }
 
-    create("gradlePluginIntegrationTest") {
+    register("gradlePluginIntegrationTest") {
         dependsOn(":kotlin-gradle-plugin-integration-tests:check")
     }
 
-    create("jvmCompilerTest") {
+    register("jvmCompilerTest") {
         dependsOn("dist")
         dependsOn(
             ":compiler:test",
@@ -504,18 +500,23 @@ tasks {
         dependsOn(":plugins:jvm-abi-gen:test")
     }
 
-    create("jsCompilerTest") {
+    register("jsCompilerTest") {
         dependsOn(":js:js.tests:test")
         dependsOn(":js:js.tests:runMocha")
     }
 
-    create("firCompilerTest") {
+    register("wasmCompilerTest") {
+        dependsOn(":js:js.tests:wasmTest")
+    }
+
+    register("firCompilerTest") {
         dependsOn(":compiler:fir:psi2fir:test")
         dependsOn(":compiler:fir:resolve:test")
         dependsOn(":compiler:fir:fir2ir:test")
+        dependsOn(":compiler:fir:lightTree:test")
     }
 
-    create("scriptingTest") {
+    register("scriptingTest") {
         dependsOn("dist")
         dependsOn(":kotlin-script-util:test")
         dependsOn(":kotlin-scripting-compiler:test")
@@ -526,9 +527,10 @@ tasks {
         dependsOn(":kotlin-main-kts-test:test")
     }
 
-    create("compilerTest") {
+    register("compilerTest") {
         dependsOn("jvmCompilerTest")
         dependsOn("jsCompilerTest")
+        dependsOn("wasmCompilerTest")
         dependsOn("firCompilerTest")
 
         dependsOn("scriptingTest")
@@ -537,44 +539,44 @@ tasks {
         dependsOn(":core:descriptors.runtime:test")
     }
 
-    create("toolsTest") {
+    register("toolsTest") {
         dependsOn(":tools:kotlinp:test")
     }
 
-    create("examplesTest") {
+    register("examplesTest") {
         dependsOn("dist")
         (project(":examples").subprojects + project(":kotlin-gradle-subplugin-example")).forEach { p ->
             dependsOn("${p.path}:check")
         }
     }
 
-    create("distTest") {
+    register("distTest") {
         dependsOn("compilerTest")
         dependsOn("toolsTest")
         dependsOn("gradlePluginTest")
         dependsOn("examplesTest")
     }
 
-    create("specTest") {
+    register("specTest") {
         dependsOn("dist")
         dependsOn(":compiler:tests-spec:test")
     }
 
-    create("androidCodegenTest") {
+    register("androidCodegenTest") {
         dependsOn(":compiler:android-tests:test")
     }
 
-    create("jps-tests") {
+    register("jps-tests") {
         dependsOn("dist")
         dependsOn(":jps-plugin:test")
     }
 
-    create("idea-plugin-main-tests") {
+    register("idea-plugin-main-tests") {
         dependsOn("dist")
         dependsOn(":idea:test")
     }
 
-    create("idea-plugin-additional-tests") {
+    register("idea-plugin-additional-tests") {
         dependsOn("dist")
         dependsOn(
             ":idea:idea-gradle:test",
@@ -589,7 +591,7 @@ tasks {
         )
     }
 
-    create("idea-plugin-tests") {
+    register("idea-plugin-tests") {
         dependsOn("dist")
         dependsOn(
             "idea-plugin-main-tests",
@@ -597,7 +599,7 @@ tasks {
         )
     }
 
-    create("android-ide-tests") {
+    register("android-ide-tests") {
         dependsOn("dist")
         dependsOn(
             ":plugins:android-extensions-ide:test",
@@ -606,7 +608,7 @@ tasks {
         )
     }
 
-    create("plugins-tests") {
+    register("plugins-tests") {
         dependsOn("dist")
         dependsOn(
             ":kotlin-annotation-processing:test",
@@ -622,7 +624,7 @@ tasks {
     }
 
 
-    create("ideaPluginTest") {
+    register("ideaPluginTest") {
         dependsOn(
             "idea-plugin-tests",
             "jps-tests",
@@ -633,13 +635,13 @@ tasks {
     }
 
 
-    create("test") {
+    register("test") {
         doLast {
             throw GradleException("Don't use directly, use aggregate tasks *-check instead")
         }
     }
 
-    create("check") {
+    register("check") {
         dependsOn("test")
     }
 }
@@ -731,9 +733,14 @@ fun jdkPath(version: String): String {
 
 
 fun Project.configureJvmProject(javaHome: String, javaVersion: String) {
+    val currentJavaHome = File(System.getProperty("java.home")!!).canonicalPath
+    val shouldFork = !currentJavaHome.startsWith(File(javaHome).canonicalPath)
+
     tasks.withType<JavaCompile> {
         if (name != "compileJava9Java") {
-            options.isFork = true
+            sourceCompatibility = javaVersion
+            targetCompatibility = javaVersion
+            options.isFork = shouldFork
             options.forkOptions.javaHome = file(javaHome)
             options.compilerArgs.add("-proc:none")
             options.encoding = "UTF-8"
@@ -749,42 +756,81 @@ fun Project.configureJvmProject(javaHome: String, javaVersion: String) {
     tasks.withType<Test> {
         executable = File(javaHome, "bin/java").canonicalPath
     }
+
+    plugins.withId("java-base") {
+        configureShadowJarSubstitutionInCompileClasspath()
+    }
 }
 
-tasks.create("findShadowJarsInClasspath").doLast {
-    fun Collection<File>.printSorted(indent: String = "    ") {
-        sortedBy { it.path }.forEach { println(indent + it.relativeTo(rootProject.projectDir)) }
+fun Project.configureShadowJarSubstitutionInCompileClasspath() {
+    val substitutionMap = mapOf(":kotlin-reflect" to ":kotlin-reflect-api")
+
+    fun configureSubstitution(substitution: DependencySubstitution) {
+        val requestedProject = (substitution.requested as? ProjectComponentSelector)?.projectPath ?: return
+        val replacementProject = substitutionMap[requestedProject] ?: return
+        substitution.useTarget(project(replacementProject), "Non-default shadow jars should not be used in compile classpath")
     }
 
-    val shadowJars = hashSetOf<File>()
-    for (project in rootProject.allprojects) {
-        for (task in project.tasks) {
-            when (task) {
-                is ShadowJar -> {
-                    shadowJars.add(fileFrom(task.archivePath))
-                }
-                is ProGuardTask -> {
-                    shadowJars.addAll(task.outputs.files.toList())
-                }
+    sourceSets.all {
+        for (configName in listOf(compileOnlyConfigurationName, compileClasspathConfigurationName)) {
+            configurations.getByName(configName).resolutionStrategy.dependencySubstitution {
+                all(::configureSubstitution)
             }
         }
     }
+}
 
-    println("Shadow jars:")
-    shadowJars.printSorted()
+tasks.register("findShadowJarsInClasspath") {
+    doLast {
+        fun Collection<File>.printSorted(indent: String = "    ") {
+            sortedBy { it.path }.forEach { println(indent + it.relativeTo(rootProject.projectDir)) }
+        }
 
-    fun Project.checkConfig(configName: String) {
-        val config = configurations.findByName(configName) ?: return
-        val shadowJarsInConfig = config.resolvedConfiguration.files.filter { it in shadowJars }
-        if (shadowJarsInConfig.isNotEmpty()) {
-            println()
-            println("Project $project contains shadow jars in configuration '$configName':")
-            shadowJarsInConfig.printSorted()
+        val mainJars = hashSetOf<File>()
+        val shadowJars = hashSetOf<File>()
+        for (project in rootProject.allprojects) {
+            project.withJavaPlugin {
+                project.sourceSets.forEach { sourceSet ->
+                    val jarTask = project.tasks.findByPath(sourceSet.jarTaskName) as? Jar
+                    jarTask?.outputFile?.let { mainJars.add(it) }
+                }
+            }
+            for (task in project.tasks) {
+                when (task) {
+                    is ShadowJar -> {
+                        shadowJars.add(fileFrom(task.outputFile))
+                    }
+                    is ProGuardTask -> {
+                        shadowJars.addAll(task.outputs.files.toList())
+                    }
+                }
+            }
+        }
+
+        shadowJars.removeAll(mainJars)
+        println("Shadow jars that might break incremental compilation:")
+        shadowJars.printSorted()
+
+        fun Project.checkConfig(configName: String) {
+            val config = configurations.findByName(configName) ?: return
+            val shadowJarsInConfig = config.resolvedConfiguration.files.filter { it in shadowJars }
+            if (shadowJarsInConfig.isNotEmpty()) {
+                println()
+                println("Project $project contains shadow jars in configuration '$configName':")
+                shadowJarsInConfig.printSorted()
+            }
+        }
+
+        for (project in rootProject.allprojects) {
+            project.sourceSetsOrNull?.forEach { sourceSet ->
+                project.checkConfig(sourceSet.compileClasspathConfigurationName)
+            }
         }
     }
-
-    for (project in rootProject.allprojects) {
-        project.checkConfig("compileClasspath")
-        project.checkConfig("testCompileClasspath")
-    }
 }
+
+val Jar.outputFile: File
+    get() = archiveFile.get().asFile
+
+val Project.sourceSetsOrNull: SourceSetContainer?
+    get() = convention.findPlugin(JavaPluginConvention::class.java)?.sourceSets

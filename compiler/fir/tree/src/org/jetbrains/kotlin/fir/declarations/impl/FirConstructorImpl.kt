@@ -14,23 +14,24 @@ import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirDelegatedConstructorCall
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.transformInplace
 import org.jetbrains.kotlin.fir.transformSingle
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
+import org.jetbrains.kotlin.fir.visitors.FirVisitor
 import org.jetbrains.kotlin.name.Name
 
-open class FirConstructorImpl : FirAbstractCallableMember, FirConstructor {
+open class FirConstructorImpl : FirAbstractCallableMember<FirConstructor>, FirConstructor {
 
-    override val symbol: FirFunctionSymbol
+    override val symbol: FirConstructorSymbol
 
     final override var delegatedConstructor: FirDelegatedConstructorCall? = null
 
     constructor(
         session: FirSession,
         psi: PsiElement?,
-        symbol: FirFunctionSymbol,
+        symbol: FirConstructorSymbol,
         visibility: Visibility,
         isExpect: Boolean,
         isActual: Boolean,
@@ -48,7 +49,7 @@ open class FirConstructorImpl : FirAbstractCallableMember, FirConstructor {
     constructor(
         session: FirSession,
         psi: PsiElement?,
-        symbol: FirFunctionSymbol,
+        symbol: FirConstructorSymbol,
         receiverTypeRef: FirTypeRef?,
         returnTypeRef: FirTypeRef
     ) : super(session, psi, NAME, receiverTypeRef, returnTypeRef) {
@@ -68,6 +69,20 @@ open class FirConstructorImpl : FirAbstractCallableMember, FirConstructor {
         delegatedConstructor?.transformSingle(transformer, data)
         body = body?.transformSingle(transformer, data)
 
+        return this
+    }
+
+    override fun <R, D> acceptChildren(visitor: FirVisitor<R, D>, data: D) {
+        annotations.forEach { it.accept(visitor, data) }
+        valueParameters.forEach { it.accept(visitor, data) }
+        returnTypeRef.accept(visitor, data)
+        status.accept(visitor, data)
+        delegatedConstructor?.accept(visitor, data)
+        body?.accept(visitor, data)
+    }
+
+    override fun <D> transformValueParameters(transformer: FirTransformer<D>, data: D): FirConstructorImpl {
+        valueParameters.transformInplace(transformer, data)
         return this
     }
 

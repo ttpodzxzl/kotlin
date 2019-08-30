@@ -6,11 +6,13 @@
 package org.jetbrains.kotlin.idea.util
 
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.intentions.callExpression
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.anyDescendantOfType
 import org.jetbrains.kotlin.psi.psiUtil.containingClass
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
@@ -27,7 +29,9 @@ fun KtCallExpression.replaceOrCreateTypeArgumentList(newTypeArgumentList: KtType
 
 fun KtModifierListOwner.hasInlineModifier() = hasModifier(KtTokens.INLINE_KEYWORD)
 
-fun KtPrimaryConstructor.allowedValOrVar(): Boolean = containingClass()?.let {
+fun KtModifierListOwner.hasPrivateModifier() = hasModifier(KtTokens.PRIVATE_KEYWORD)
+
+fun KtPrimaryConstructor.mustHaveValOrVar(): Boolean = containingClass()?.let {
     it.isAnnotation() || it.hasInlineModifier()
 } ?: false
 
@@ -43,3 +47,5 @@ fun PsiElement.textRangeIn(other: PsiElement): TextRange = textRange.shiftLeft(o
 fun KtDotQualifiedExpression.calleeTextRangeInThis(): TextRange? = callExpression?.calleeExpression?.textRangeIn(this)
 
 fun KtNamedDeclaration.nameIdentifierTextRangeInThis(): TextRange? = nameIdentifier?.textRangeIn(this)
+
+fun PsiElement.hasComments(): Boolean = anyDescendantOfType<PsiComment>()

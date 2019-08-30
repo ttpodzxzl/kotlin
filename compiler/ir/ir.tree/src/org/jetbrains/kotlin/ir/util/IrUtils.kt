@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.util
 
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
@@ -198,14 +199,22 @@ val IrDeclarationContainer.properties: Sequence<IrProperty>
 val IrFunction.explicitParameters: List<IrValueParameter>
     get() = (listOfNotNull(dispatchReceiverParameter, extensionReceiverParameter) + valueParameters)
 
+val IrBody.statements: List<IrStatement>
+    get() = when (this) {
+        is IrBlockBody -> statements
+        is IrExpressionBody -> listOf(expression)
+        is IrSyntheticBody -> error("Synthetic body contains no statements: $this")
+        else -> error("Unknown subclass of IrBody: $this")
+    }
+
 val IrClass.defaultType: IrSimpleType
     get() = this.thisReceiver!!.type as IrSimpleType
 
-val IrSimpleFunction.isReal: Boolean get() = descriptor.kind.isReal
-
 val IrSimpleFunction.isSynthesized: Boolean get() = descriptor.kind == CallableMemberDescriptor.Kind.SYNTHESIZED
 
-val IrSimpleFunction.isFakeOverride: Boolean get() = origin == IrDeclarationOrigin.FAKE_OVERRIDE
+val IrDeclaration.isReal: Boolean get() = !isFakeOverride
+
+val IrDeclaration.isFakeOverride: Boolean get() = origin == IrDeclarationOrigin.FAKE_OVERRIDE
 
 fun IrClass.isSubclassOf(ancestor: IrClass): Boolean {
 
@@ -302,7 +311,19 @@ val IrDeclarationWithName.fqNameWhenAvailable: FqName?
         else -> null
     }
 
-val IrDeclaration.parentAsClass get() = parent as IrClass
+val IrDeclaration.parentAsClass: IrClass
+    get() = parent as? IrClass ?: error("Parent of this declaration is not a class: ${render()}")
+
+fun IrClass.isLocalClass(): Boolean {
+    var current: IrDeclarationParent? = this
+    while (current != null && current !is IrPackageFragment) {
+        if (current is IrDeclarationWithVisibility && current.visibility == Visibilities.LOCAL)
+            return true
+        current = (current as? IrDeclaration)?.parent
+    }
+
+    return false
+}
 
 tailrec fun IrElement.getPackageFragment(): IrPackageFragment? {
     if (this is IrPackageFragment) return this
@@ -358,6 +379,13 @@ fun IrDeclaration.isEffectivelyExternal(): Boolean {
         is IrClass -> isExternal || parent is IrDeclaration && parent.isEffectivelyExternal()
         else -> false
     }
+}
+
+fun IrFunction.isExternalOrInheritedFromExternal(): Boolean {
+    fun isExternalOrInheritedFromExternalImpl(f: IrSimpleFunction): Boolean =
+        f.isEffectivelyExternal() || f.overriddenSymbols.any { isExternalOrInheritedFromExternalImpl(it.owner) }
+
+    return isEffectivelyExternal() || (this is IrSimpleFunction && isExternalOrInheritedFromExternalImpl(this))
 }
 
 inline fun <reified T : IrDeclaration> IrDeclarationContainer.findDeclaration(predicate: (T) -> Boolean): T? =
@@ -563,3 +591,20 @@ val IrDeclaration.file: IrFile
             else -> TODO("Unexpected declaration parent")
         }
     }
+
+val IrFunction.allTypeParameters: List<IrTypeParameter>
+    get() = if (this is IrConstructor)
+        parentAsClass.typeParameters + typeParameters
+    else
+        typeParameters
+
+fun IrMemberAccessExpression.getTypeSubstitutionMap(irFunction: IrFunction): Map<IrTypeParameterSymbol, IrType> =
+    irFunction.allTypeParameters.withIndex().associate {
+        it.value.symbol to getTypeArgument(it.index)!!
+    }
+
+val IrFunctionReference.typeSubstitutionMap: Map<IrTypeParameterSymbol, IrType>
+    get() = getTypeSubstitutionMap(symbol.owner)
+
+val IrFunctionAccessExpression.typeSubstitutionMap: Map<IrTypeParameterSymbol, IrType>
+    get() = getTypeSubstitutionMap(symbol.owner)

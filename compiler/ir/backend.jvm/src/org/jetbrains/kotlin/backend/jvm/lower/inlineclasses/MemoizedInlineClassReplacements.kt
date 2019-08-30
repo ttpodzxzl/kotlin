@@ -10,22 +10,19 @@ import org.jetbrains.kotlin.backend.common.ir.copyTypeParameters
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
 import org.jetbrains.kotlin.backend.common.ir.createDispatchReceiverParameter
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
-import org.jetbrains.kotlin.backend.jvm.ir.erasedUpperBound
 import org.jetbrains.kotlin.backend.jvm.lower.inlineclasses.InlineClassAbi.mangledNameFor
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.declarations.buildFunWithDescriptorForInlining
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
-import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.getClass
 import org.jetbrains.kotlin.ir.util.constructedClass
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.explicitParameters
-import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.storage.LockBasedStorageManager
 
 class IrReplacementFunction(
@@ -45,18 +42,17 @@ class MemoizedInlineClassReplacements {
     val getReplacementFunction: (IrFunction) -> IrReplacementFunction? =
         storageManager.createMemoizedFunctionWithNullableValues {
             when {
-                !it.hasInlineClassParameters || it.isSyntheticInlineClassMember || it.origin == IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA -> null
+                !it.hasMangledParameters || it.isSyntheticInlineClassMember || it.origin == IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA -> null
                 it.hasMethodReplacement -> createMethodReplacement(it)
                 it.hasStaticReplacement -> createStaticReplacement(it)
                 else -> null
             }
         }
 
-    private val IrFunction.hasInlineClassParameters: Boolean
-        get() = explicitParameters.any { it.type.erasedUpperBound.isInline && !it.type.isDontMangleType() }
-                || (this is IrConstructor && constructedClass.isInline)
-
-    private fun IrType.isDontMangleType() = getClass()?.fqNameWhenAvailable == DescriptorUtils.RESULT_FQ_NAME
+    private val IrFunction.hasMangledParameters: Boolean
+        get() = dispatchReceiverParameter?.type?.getClass()?.isInline == true ||
+                fullValueParameterList.any { it.type.requiresMangling } ||
+                (this is IrConstructor && constructedClass.isInline)
 
     private val IrFunction.hasStaticReplacement: Boolean
         get() = origin != IrDeclarationOrigin.FAKE_OVERRIDE &&
@@ -123,11 +119,14 @@ class MemoizedInlineClassReplacements {
 
             for ((index, parameter) in function.explicitParameters.withIndex()) {
                 val name = if (parameter == function.extensionReceiverParameter) Name.identifier("\$receiver") else parameter.name
-                val newParameter = parameter.copyTo(this, index = index - 1, name = name)
-                if (parameter == function.dispatchReceiverParameter)
+                val newParameter: IrValueParameter
+                if (parameter == function.dispatchReceiverParameter) {
+                    newParameter = parameter.copyTo(this, index = -1, name = name)
                     dispatchReceiverParameter = newParameter
-                else
+                } else {
+                    newParameter = parameter.copyTo(this, index = index - 1, name = name)
                     valueParameters.add(newParameter)
+                }
                 parameterMap[parameter.symbol] = newParameter
             }
         }
@@ -156,7 +155,7 @@ class MemoizedInlineClassReplacements {
     }
 
     private fun buildReplacement(function: IrFunction, body: IrFunctionImpl.() -> Unit) =
-        buildFun {
+        buildFunWithDescriptorForInlining(function.descriptor) {
             updateFrom(function)
             name = mangledNameFor(function)
             returnType = function.returnType

@@ -33,6 +33,7 @@ import com.intellij.openapi.util.Computable
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.compiled.ClsFileImpl
 import com.intellij.psi.search.DelegatingGlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScope
@@ -50,6 +51,7 @@ import org.jetbrains.kotlin.idea.core.util.getLineCount
 import org.jetbrains.kotlin.idea.core.util.getLineStartOffset
 import org.jetbrains.kotlin.idea.debugger.breakpoints.getLambdasAtLineIfAny
 import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches
+import org.jetbrains.kotlin.idea.debugger.stackFrame.KotlinStackFrame
 import org.jetbrains.kotlin.idea.decompiler.classFile.KtClsFile
 import org.jetbrains.kotlin.idea.stubindex.KotlinSourceFilterScope
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
@@ -107,9 +109,7 @@ class KotlinPositionManager(private val myDebugProcess: DebugProcess) : MultiReq
 
         if (!DebuggerUtils.isKotlinSourceFile(fileName)) throw NoDataException.INSTANCE
 
-        val psiFile = getPsiFileByLocation(location)?.let {
-            replaceWithAlternativeSource(it, location)
-        }
+        val psiFile = getAlternativeSource(location) ?: getPsiFileByLocation(location)
 
         if (psiFile == null) {
             val isKotlinStrataAvailable = location.declaringType().containsKotlinStrata()
@@ -185,15 +185,12 @@ class KotlinPositionManager(private val myDebugProcess: DebugProcess) : MultiReq
 
     class KotlinReentrantSourcePosition(delegate: SourcePosition) : DelegateSourcePosition(delegate)
 
-    private fun replaceWithAlternativeSource(psiFile: PsiFile, location: Location): PsiFile {
-        fun findAlternativeSource(): PsiFile? {
-            val qName = location.declaringType().name()
-            val alternativeFileUrl = DebuggerUtilsEx.getAlternativeSourceUrl(qName, myDebugProcess.project) ?: return null
-            val alternativePsiFile = VirtualFileManager.getInstance().findFileByUrl(alternativeFileUrl) ?: return null
-            return psiFile.manager.findFile(alternativePsiFile)
-        }
-
-        return findAlternativeSource() ?: psiFile
+    private fun getAlternativeSource(location: Location): PsiFile? {
+        val manager = PsiManager.getInstance(myDebugProcess.project)
+        val qName = location.declaringType().name()
+        val alternativeFileUrl = DebuggerUtilsEx.getAlternativeSourceUrl(qName, myDebugProcess.project) ?: return null
+        val alternativePsiFile = VirtualFileManager.getInstance().findFileByUrl(alternativeFileUrl) ?: return null
+        return manager.findFile(alternativePsiFile)
     }
 
     // Returns a property or a constructor if debugger stops at class declaration
@@ -207,10 +204,8 @@ class KotlinPositionManager(private val myDebugProcess: DebugProcess) : MultiReq
         val methodName = location.method().name()
         return when {
             JvmAbi.isGetterName(methodName) -> {
-                val parameterForGetter = contextElement.primaryConstructor?.valueParameters?.firstOrNull {
-                    it.hasValOrVar() && it.name != null && JvmAbi.getterName(it.name!!) == methodName
-                } ?: return null
-                parameterForGetter
+                val valueParameters = contextElement.primaryConstructor?.valueParameters ?: emptyList()
+                valueParameters.find { it.hasValOrVar() && it.name != null && JvmAbi.getterName(it.name!!) == methodName }
             }
             methodName == "<init>" -> contextElement.primaryConstructor
             else -> null
@@ -242,7 +237,7 @@ class KotlinPositionManager(private val myDebugProcess: DebugProcess) : MultiReq
             }
 
             val internalClassNames = DebuggerClassNameProvider(myDebugProcess, alwaysReturnLambdaParentClass = false)
-                    .getOuterClassNamesForElement(literal.firstChild)
+                    .getOuterClassNamesForElement(literal.firstChild, emptySet())
                     .classNames
 
             if (internalClassNames.any { it == currentLocationClassName }) {
@@ -287,7 +282,7 @@ class KotlinPositionManager(private val myDebugProcess: DebugProcess) : MultiReq
         val psiFile = sourcePosition.file
         if (psiFile is KtFile) {
             if (!ProjectRootsUtil.isInProjectOrLibSource(psiFile)) return emptyList()
-            return DebuggerClassNameProvider(myDebugProcess).getClassesForPosition(sourcePosition)
+            return hopelessAware { DebuggerClassNameProvider(myDebugProcess).getClassesForPosition(sourcePosition) } ?: emptyList()
         }
 
         if (psiFile is ClsFileImpl) {

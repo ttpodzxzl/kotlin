@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
 import org.jetbrains.kotlin.platform.js.isJs
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import org.jetbrains.kotlin.projectModel.*
+import org.jetbrains.kotlin.types.typeUtil.closure
 import java.io.File
 
 // allows to configure a test mpp project
@@ -74,9 +75,9 @@ fun AbstractMultiModuleTest.doSetup(projectModel: ProjectResolveModel) {
     }.toMap()
 
     for ((resolveModule, ideaModule) in resolveModulesToIdeaModules.entries) {
-        resolveModule.dependencies.forEach {
+        resolveModule.dependencies.closure(preserveOrder = true) { it.to.dependencies }.forEach {
             when (val to = it.to) {
-                FullJdk -> ConfigLibraryUtil.configureSdk(module, PluginTestCaseBase.addJdk(testRootDisposable) {
+                FullJdk -> ConfigLibraryUtil.configureSdk(ideaModule, PluginTestCaseBase.addJdk(testRootDisposable) {
                     PluginTestCaseBase.jdk(TestJdkKind.FULL_JDK)
                 })
 
@@ -93,7 +94,8 @@ fun AbstractMultiModuleTest.doSetup(projectModel: ProjectResolveModel) {
             platform,
             implementedModuleNames = resolveModule.dependencies.filter { it.kind == ResolveDependency.Kind.DEPENDS_ON }.map { it.to.name }
         )
-        ideaModule.enableMultiPlatform()
+        // New inference is enabled here as these tests are using type refinement feature that is working only along with NI
+        ideaModule.enableMultiPlatform(additionalCompilerArguments = "-Xnew-inference")
     }
 }
 

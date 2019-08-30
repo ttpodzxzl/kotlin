@@ -21,6 +21,7 @@
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.internal.tasks.testing.filter.DefaultTestFilter
+import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.extra
 import org.gradle.kotlin.dsl.project
@@ -31,7 +32,12 @@ import java.lang.Character.isUpperCase
 import java.nio.file.Files
 import java.nio.file.Path
 
-fun Project.projectTest(taskName: String = "test", parallel: Boolean = false, body: Test.() -> Unit = {}): Test = getOrCreateTask(taskName) {
+fun Project.projectTest(
+    taskName: String = "test",
+    parallel: Boolean = false,
+    shortenTempRootName: Boolean = false,
+    body: Test.() -> Unit = {}
+): TaskProvider<Test> = getOrCreateTask(taskName) {
     doFirst {
         val commandLineIncludePatterns = (filter as? DefaultTestFilter)?.commandLineIncludePatterns ?: emptySet()
         val patterns = filter.includePatterns + commandLineIncludePatterns
@@ -87,7 +93,6 @@ fun Project.projectTest(taskName: String = "test", parallel: Boolean = false, bo
     jvmArgs(
         "-ea",
         "-XX:+HeapDumpOnOutOfMemoryError",
-        "-Xmx1600m",
         "-XX:+UseCodeCacheFlushing",
         "-XX:ReservedCodeCacheSize=128m",
         "-Djna.nosys=true"
@@ -111,7 +116,8 @@ fun Project.projectTest(taskName: String = "test", parallel: Boolean = false, bo
             (teamcity?.get("teamcity.build.tempDir") as? String)
                 ?: System.getProperty("java.io.tmpdir")
         systemTempRoot.let {
-            subProjectTempRoot = Files.createTempDirectory(File(systemTempRoot).toPath(), project.name + "Project_" + taskName + "_")
+            val prefix = (project.name + "Project_" + taskName + "_").takeUnless { shortenTempRootName }
+            subProjectTempRoot = Files.createTempDirectory(File(systemTempRoot).toPath(), prefix)
             systemProperty("java.io.tmpdir", subProjectTempRoot.toString())
         }
     }
@@ -136,8 +142,9 @@ fun Project.projectTest(taskName: String = "test", parallel: Boolean = false, bo
 
 private inline fun String.isFirstChar(f: (Char) -> Boolean) = isNotEmpty() && f(first())
 
-inline fun <reified T : Task> Project.getOrCreateTask(taskName: String, body: T.() -> Unit): T =
-    (tasks.findByName(taskName)?.let { it as T } ?: task<T>(taskName)).apply { body() }
+inline fun <reified T : Task> Project.getOrCreateTask(taskName: String, noinline body: T.() -> Unit): TaskProvider<T> =
+    if (tasks.names.contains(taskName)) tasks.named(taskName, T::class.java).apply { configure(body) }
+    else tasks.register(taskName, T::class.java, body)
 
 object TaskUtils {
     fun useAndroidSdk(task: Task) {

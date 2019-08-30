@@ -1,17 +1,6 @@
 /*
- * Copyright 2010-2016 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2010-2019 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
 package org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations
@@ -142,7 +131,8 @@ private object ElementHashingStrategy : TObjectHashingStrategy<PsiElement> {
 
 class MoveKotlinDeclarationsProcessor(
     val descriptor: MoveDeclarationsDescriptor,
-    val mover: Mover = Mover.Default
+    val mover: Mover = Mover.Default,
+    private val throwOnConflicts: Boolean = false
 ) : BaseRefactoringProcessor(descriptor.project) {
     companion object {
         private const val REFACTORING_NAME = "Move declarations"
@@ -153,10 +143,13 @@ class MoveKotlinDeclarationsProcessor(
 
     private var nonCodeUsages: Array<NonCodeUsageInfo>? = null
     private val moveEntireFile = descriptor.moveSource is MoveSource.File
-    private val elementsToMove = descriptor.moveSource.elementsToMove.filter { e -> e.parent != descriptor.moveTarget.getTargetPsiIfExists(e) }
+    private val elementsToMove = descriptor.moveSource.elementsToMove.filter { e ->
+        e.parent != descriptor.moveTarget.getTargetPsiIfExists(e)
+    }
+
     private val kotlinToLightElementsBySourceFile = elementsToMove
         .groupBy { it.containingKtFile }
-        .mapValues { it.value.keysToMap { it.toLightElements().ifEmpty { listOf(it) } } }
+        .mapValues { it.value.keysToMap { declaration -> declaration.toLightElements().ifEmpty { listOf(declaration) } } }
     private val conflicts = MultiMap<PsiElement, String>()
 
     override fun getRefactoringId() = REFACTORING_ID
@@ -209,10 +202,9 @@ class MoveKotlinDeclarationsProcessor(
                 val results = ReferencesSearch
                     .search(lightElement, searchScope)
                     .mapNotNullTo(ArrayList()) { ref ->
-                        if (foundReferences.add(ref) && elementsToMove.none { it.isAncestor(ref.element)}) {
+                        if (foundReferences.add(ref) && elementsToMove.none { it.isAncestor(ref.element) }) {
                             createMoveUsageInfoIfPossible(ref, lightElement, addImportToOriginalFile = true, isInternal = false)
-                        }
-                        else null
+                        } else null
                     }
 
                 val name = lightElement.getKotlinFqName()?.quoteIfNeeded()?.asString()
@@ -276,6 +268,11 @@ class MoveKotlinDeclarationsProcessor(
 
     override fun preprocessUsages(refUsages: Ref<Array<UsageInfo>>): Boolean {
         return showConflicts(conflicts, refUsages.get())
+    }
+
+    override fun showConflicts(conflicts: MultiMap<PsiElement, String>, usages: Array<out UsageInfo>?): Boolean {
+        if (throwOnConflicts && !conflicts.isEmpty) throw RefactoringConflictsFoundException()
+        return super.showConflicts(conflicts, usages)
     }
 
     override fun performRefactoring(usages: Array<out UsageInfo>) = doPerformRefactoring(usages.toList())

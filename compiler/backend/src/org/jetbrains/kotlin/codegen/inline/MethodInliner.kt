@@ -487,7 +487,12 @@ class MethodInliner(
                 name: String, desc: String, signature: String?, start: Label, end: Label, index: Int
             ) {
                 if (isInliningLambda || GENERATE_DEBUG_INFO) {
-                    val varSuffix = if (inliningContext.isRoot && !isFakeLocalVariableForInline(name)) INLINE_FUN_VAR_SUFFIX else ""
+                    val isInlineFunctionMarker = name.startsWith(JvmAbi.LOCAL_VARIABLE_NAME_PREFIX_INLINE_FUNCTION)
+                    val varSuffix = when {
+                        inliningContext.isRoot && !isInlineFunctionMarker -> INLINE_FUN_VAR_SUFFIX
+                        else -> ""
+                    }
+
                     val varName = if (!varSuffix.isEmpty() && name == AsmUtil.THIS) AsmUtil.INLINE_DECLARATION_SITE_THIS else name
                     super.visitLocalVariable(varName + varSuffix, desc, signature, start, end, getNewIndex(index))
                 }
@@ -1066,15 +1071,17 @@ class MethodInliner(
         //remove next template:
         //      aload x
         //      LDC paramName
-        //      INTRINSICS_CLASS_NAME.checkParameterIsNotNull(...)
+        //      INTRINSICS_CLASS_NAME.checkParameterIsNotNull/checkNotNullParameter(...)
         private fun removeClosureAssertions(node: MethodNode) {
             val toDelete = arrayListOf<AbstractInsnNode>()
             InsnSequence(node.instructions).filterIsInstance<MethodInsnNode>().forEach { methodInsnNode ->
-                if (methodInsnNode.name == "checkParameterIsNotNull" && methodInsnNode.owner == IntrinsicMethods.INTRINSICS_CLASS_NAME) {
+                if (methodInsnNode.owner == IntrinsicMethods.INTRINSICS_CLASS_NAME &&
+                    (methodInsnNode.name == "checkParameterIsNotNull" || methodInsnNode.name == "checkNotNullParameter")
+                ) {
                     val prev = methodInsnNode.previous
-                    assert(Opcodes.LDC == prev?.opcode) { "'checkParameterIsNotNull' should go after LDC but $prev" }
+                    assert(Opcodes.LDC == prev?.opcode) { "'${methodInsnNode.name}' should go after LDC but $prev" }
                     val prevPev = methodInsnNode.previous.previous
-                    assert(Opcodes.ALOAD == prevPev?.opcode) { "'checkParameterIsNotNull' should be invoked on local var, but $prev" }
+                    assert(Opcodes.ALOAD == prevPev?.opcode) { "'${methodInsnNode.name}' should be invoked on local var, but $prev" }
 
                     toDelete.add(prevPev)
                     toDelete.add(prev)

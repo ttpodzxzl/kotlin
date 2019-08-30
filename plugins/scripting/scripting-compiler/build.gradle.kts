@@ -51,6 +51,9 @@ runtimeJar()
 sourcesJar()
 javadocJar()
 
+testsJar()
+
 projectTest {
+    dependsOn(":dist")
     workingDir = rootDir
 }

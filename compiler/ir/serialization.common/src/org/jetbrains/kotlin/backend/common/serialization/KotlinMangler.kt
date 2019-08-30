@@ -5,10 +5,7 @@
 
 package org.jetbrains.kotlin.backend.common.serialization
 
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.descriptors.PropertyAccessorDescriptor
-import org.jetbrains.kotlin.descriptors.Visibilities
-import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.types.*
@@ -22,9 +19,16 @@ interface KotlinMangler {
     fun IrDeclaration.isExported(): Boolean
     val IrFunction.functionName: String
     val IrType.isInlined: Boolean
+    val Long.isSpecial: Boolean
+
+    companion object {
+        private val FUNCTION_PREFIX = "<BUILT-IN-FUNCTION>"
+        fun functionClassSymbolName(name: Name) = "ktype:$FUNCTION_PREFIX$name"
+        fun functionInvokeSymbolName(name: Name) = "kfun:$FUNCTION_PREFIX$name.invoke"
+    }
 }
 
-abstract class KotlinManglerImpl: KotlinMangler {
+abstract class KotlinManglerImpl : KotlinMangler {
     override val String.hashMangle get() = this.cityHash64()
 
     override val IrDeclaration.hashedMangle: Long
@@ -75,6 +79,7 @@ abstract class KotlinManglerImpl: KotlinMangler {
             is IrFunction -> this.visibility
             is IrProperty -> this.visibility
             is IrField -> this.visibility
+            is IrTypeAlias -> this.visibility
             else -> null
         }
 
@@ -144,9 +149,10 @@ abstract class KotlinManglerImpl: KotlinMangler {
     val IrValueParameter.extensionReceiverNamePart: String
         get() = "@${typeToHashString(this.type)}."
 
-    open val IrFunction.argsPart get() = this.valueParameters.map {
-        "${typeToHashString(it.type)}${if (it.isVararg) "_VarArg" else ""}"
-    }.joinToString(";")
+    open val IrFunction.argsPart
+        get() = this.valueParameters.map {
+            "${typeToHashString(it.type)}${if (it.isVararg) "_VarArg" else ""}"
+        }.joinToString(";")
 
     open val IrFunction.signature: String
         get() {
@@ -170,10 +176,13 @@ abstract class KotlinManglerImpl: KotlinMangler {
     override val IrFunction.functionName: String
         get() {
             // TODO: Again. We can't call super in children, so provide a hook for now.
-            this.platformSpecificFunctionName ?. let { return it }
+            this.platformSpecificFunctionName?.let { return it }
             val name = this.name.mangleIfInternal(this.module, this.visibility)
             return "$name$signature"
         }
+
+    override val Long.isSpecial: Boolean
+        get() = specialHashes.contains(this)
 
     fun Name.mangleIfInternal(moduleDescriptor: ModuleDescriptor, visibility: Visibility): String =
         if (visibility != Visibilities.INTERNAL) {
@@ -197,6 +206,8 @@ abstract class KotlinManglerImpl: KotlinMangler {
     val IrClass.typeInfoSymbolName: String
         get() {
             assert(this.isExported())
+            if (isBuiltInFunction(this))
+                return KotlinMangler.functionClassSymbolName(name)
             return "ktype:" + this.fqNameForIrSerialization.toString()
         }
 
@@ -211,22 +222,25 @@ abstract class KotlinManglerImpl: KotlinMangler {
             return "ktypeparam:$containingDeclarationPart$name@$index"
         }
 
+    val IrTypeAlias.symbolName: String
+        get() {
+            val containingDeclarationPart = parent.fqNameForIrSerialization.let {
+                if (it.isRoot) "" else "$it."
+            }
+            return "ktypealias:$containingDeclarationPart$name"
+        }
+
 // This is a little extension over what's used in real mangling
 // since some declarations never appear in the bitcode symbols.
 
     internal fun IrDeclaration.uniqSymbolName(): String = when (this) {
-        is IrFunction
-        -> this.uniqFunctionName
-        is IrProperty
-        -> this.symbolName
-        is IrClass
-        -> this.typeInfoSymbolName
-        is IrField
-        -> this.symbolName
-        is IrEnumEntry
-        -> this.symbolName
-        is IrTypeParameter
-        -> this.symbolName
+        is IrFunction -> this.uniqFunctionName
+        is IrProperty -> this.symbolName
+        is IrClass -> this.typeInfoSymbolName
+        is IrField -> this.symbolName
+        is IrEnumEntry -> this.symbolName
+        is IrTypeParameter -> this.symbolName
+        is IrTypeAlias -> this.symbolName
         else -> error("Unexpected exported declaration: $this")
     }
 
@@ -265,6 +279,8 @@ abstract class KotlinManglerImpl: KotlinMangler {
 // In addition functions appearing in fq sequence appear as <full signature>.
     private val IrFunction.uniqFunctionName: String
         get() {
+            if (isBuiltInFunction(this))
+                return KotlinMangler.functionInvokeSymbolName(parentAsClass.name)
             val parent = this.parent
 
             val containingDeclarationPart = parent.fqNameUnique.let {
@@ -274,5 +290,9 @@ abstract class KotlinManglerImpl: KotlinMangler {
             return "kfun:$containingDeclarationPart#$functionName"
         }
 
-
+    private val specialHashes = listOf("Function", "KFunction", "SuspendFunction", "KSuspendFunction")
+        .flatMap { name ->
+            (0..255).map { KotlinMangler.functionClassSymbolName(Name.identifier(name + it)) }
+        }.map { it.hashMangle }
+        .toSet()
 }

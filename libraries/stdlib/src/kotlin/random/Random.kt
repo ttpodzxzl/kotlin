@@ -329,15 +329,17 @@ public fun Random.nextInt(range: IntRange): Int = when {
 @SinceKotlin("1.3")
 public fun Random.nextLong(range: LongRange): Long = when {
     range.isEmpty() -> throw IllegalArgumentException("Cannot get random in empty range: $range")
-    range.last < Long.MAX_VALUE -> nextLong(range.start, range.endInclusive + 1)
-    range.start > Long.MIN_VALUE -> nextLong(range.start - 1, range.endInclusive) + 1
+    range.last < Long.MAX_VALUE -> nextLong(range.first, range.last + 1)
+    range.first > Long.MIN_VALUE -> nextLong(range.first - 1, range.last) + 1
     else -> nextLong()
 }
 
 
 internal expect fun defaultPlatformRandom(): Random
-internal expect fun fastLog2(value: Int): Int //  31 - Integer.numberOfLeadingZeros(value)
 internal expect fun doubleFromParts(hi26: Int, low27: Int): Double
+
+@UseExperimental(ExperimentalStdlibApi::class)
+internal fun fastLog2(value: Int): Int = 31 - value.countLeadingZeroBits()
 
 /** Takes upper [bitCount] bits (0..32) from this number. */
 internal fun Int.takeUpperBits(bitCount: Int): Int =

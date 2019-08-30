@@ -24,9 +24,8 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesModificationTracker
 import org.jetbrains.kotlin.idea.core.script.scriptRelatedModuleName
-import org.jetbrains.kotlin.idea.scratch.ui.ScratchPanelListener
-import org.jetbrains.kotlin.idea.scratch.ui.ScratchTopPanel
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
+import org.jetbrains.kotlin.idea.util.projectStructure.getModule
 import org.jetbrains.kotlin.parsing.KotlinParserDefinition.Companion.STD_SCRIPT_EXT
 import org.jetbrains.kotlin.parsing.KotlinParserDefinition.Companion.STD_SCRIPT_SUFFIX
 import org.jetbrains.kotlin.psi.KtFile
@@ -35,9 +34,9 @@ class ScratchFileModuleInfoProvider(val project: Project) : ProjectComponent {
     private val LOG = Logger.getInstance(this.javaClass)
 
     override fun projectOpened() {
-        project.messageBus.connect().subscribe(ScratchPanelListener.TOPIC, object : ScratchPanelListener {
-            override fun panelAdded(panel: ScratchTopPanel) {
-                val ktFile = panel.scratchFile.getPsiFile() as? KtFile ?: return
+        project.messageBus.connect().subscribe(ScratchFileListener.TOPIC, object : ScratchFileListener {
+            override fun fileCreated(scratchFile: ScratchFile) {
+                val ktFile = scratchFile.getPsiFile() as? KtFile ?: return
                 val file = ktFile.virtualFile ?: return
 
                 // BUNCH: 181 scratch files are created with .kt extension
@@ -58,7 +57,7 @@ class ScratchFileModuleInfoProvider(val project: Project) : ProjectComponent {
                     return
                 }
 
-                panel.addModuleListener { psiFile, module ->
+                scratchFile.addModuleListener { psiFile, module ->
                     psiFile.virtualFile.scriptRelatedModuleName = module?.name
 
                     // Drop caches for old module
@@ -67,9 +66,12 @@ class ScratchFileModuleInfoProvider(val project: Project) : ProjectComponent {
                     DaemonCodeAnalyzer.getInstance(project).restart(psiFile)
                 }
 
-                val module = ktFile.virtualFile.scriptRelatedModuleName?.let { ModuleManager.getInstance(project).findModuleByName(it) }
-                if (module != null) {
-                    panel.setModule(module)
+                if (file.isKotlinWorksheet) {
+                    val module = file.getModule(project) ?: return
+                    scratchFile.setModule(module)
+                } else {
+                    val module = file.scriptRelatedModuleName?.let { ModuleManager.getInstance(project).findModuleByName(it) } ?: return
+                    scratchFile.setModule(module)
                 }
             }
         })

@@ -98,8 +98,7 @@ class IrInlineCodegen(
     }
 
     override fun genCall(
-        callableMethod: Callable,
-        callDefault: Boolean,
+        callableMethod: IrCallableMethod,
         codegen: ExpressionCodegen,
         expression: IrFunctionAccessExpression
     ) {
@@ -107,7 +106,7 @@ class IrInlineCodegen(
         // TODO port inlining cycle detection to IrFunctionAccessExpression & pass it
         state.globalInlineContext.enterIntoInlining(null)
         try {
-            performInline(typeArguments, callDefault, codegen)
+            performInline(typeArguments, false, codegen)
         } finally {
             state.globalInlineContext.exitFromInliningOf(null)
         }
@@ -121,8 +120,8 @@ class IrInlineCodegen(
     ): LambdaInfo {
         val referencedFunction = irReference.symbol.owner
         return IrExpressionLambdaImpl(
-            irReference, referencedFunction, codegen.typeMapper, parameter.isCrossinline, boundReceiver != null,
-            parameter.type.isExtensionFunctionType
+            irReference, referencedFunction, codegen.typeMapper, codegen.methodSignatureMapper, parameter.isCrossinline,
+            boundReceiver != null, parameter.type.isExtensionFunctionType
         ).also { lambda ->
             val closureInfo = invocationParamBuilder.addNextValueParameter(type, true, null, parameter.index)
             closureInfo.functionalArgument = lambda
@@ -135,6 +134,7 @@ class IrExpressionLambdaImpl(
     val reference: IrFunctionReference,
     val function: IrFunction,
     private val typeMapper: IrTypeMapper,
+    private val methodSignatureMapper: MethodSignatureMapper,
     isCrossInline: Boolean,
     override val isBoundCallableReference: Boolean,
     override val isExtensionLambda: Boolean
@@ -157,13 +157,14 @@ class IrExpressionLambdaImpl(
                     when (ir) {
                         is IrGetValue -> capturedParamDesc(ir.descriptor.name.asString(), typeMapper.mapType(ir.type))
                         is IrConst<*> -> capturedParamDesc(BOUND_REFERENCE_RECEIVER, typeMapper.mapType(ir.type))
+                        is IrGetField -> capturedParamDesc(ir.descriptor.name.asString(), typeMapper.mapType(ir.type))
                         else -> error("Unrecognized expression: ${ir.dump()}")
                     }
                 )
             }
         }
 
-    private val loweredMethod = typeMapper.mapAsmMethod(function)
+    private val loweredMethod = methodSignatureMapper.mapAsmMethod(function)
 
     val capturedParamsInDesc: List<Type> =
         loweredMethod.argumentTypes.drop(if (isExtensionLambda) 1 else 0).take(capturedVars.size)

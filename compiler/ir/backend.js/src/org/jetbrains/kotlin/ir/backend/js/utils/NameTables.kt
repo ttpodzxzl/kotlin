@@ -12,10 +12,7 @@ import org.jetbrains.kotlin.ir.backend.js.JsLoweredDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrLoop
 import org.jetbrains.kotlin.ir.types.isUnit
-import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
-import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
-import org.jetbrains.kotlin.ir.util.isEnumClass
-import org.jetbrains.kotlin.ir.util.isInlined
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
@@ -26,7 +23,8 @@ import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
 
 class NameTable<T>(
     val parent: NameTable<T>? = null,
-    private val reserved: MutableSet<String> = mutableSetOf()
+    private val reserved: MutableSet<String> = mutableSetOf(),
+    val sanitizer: (String) -> String = ::sanitizeName
 ) {
     var finished = false
     val names = mutableMapOf<T, String>()
@@ -44,9 +42,10 @@ class NameTable<T>(
         reserved.add(name)
     }
 
-    fun declareFreshName(declaration: T, suggestedName: String) {
-        val freshName = findFreshName(sanitizeName(suggestedName))
+    fun declareFreshName(declaration: T, suggestedName: String): String {
+        val freshName = findFreshName(sanitizer(suggestedName))
         declareStableName(declaration, freshName)
+        return freshName
     }
 
     private fun findFreshName(suggestedName: String): String {
@@ -279,7 +278,7 @@ class NameTables(packages: List<IrPackageFragment>) {
         if (name == null && signature is ParameterTypeBasedSignature && signature.suggestedName.startsWith("invoke"))
             return signature.suggestedName
         require(name != null) {
-            "Can't find name for member function $function"
+            "Can't find name for member function ${function.render()}"
         }
         return name
     }

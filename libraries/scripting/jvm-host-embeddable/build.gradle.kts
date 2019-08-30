@@ -21,7 +21,8 @@ sourceSets {
 
 publish()
 
-val jar = tasks.getByName<Jar>("jar")
-runtimeJar(rewriteDepsToShadedCompiler(jar))
+noDefaultJar()
+
+runtimeJar(rewriteDefaultJarDepsToShadedCompiler())
 sourcesJar()
 javadocJar()

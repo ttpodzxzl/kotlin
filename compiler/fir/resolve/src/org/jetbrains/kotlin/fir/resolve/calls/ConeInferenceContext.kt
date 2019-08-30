@@ -28,6 +28,8 @@ interface ConeInferenceContext : TypeSystemInferenceExtensionContext,
 
     val symbolProvider: FirSymbolProvider get() = session.service()
 
+    override val isErrorTypeAllowed: Boolean get() = false
+
     override fun nullableNothingType(): SimpleTypeMarker {
         return StandardClassIds.Nothing(symbolProvider).constructType(emptyArray(), true)
     }
@@ -60,7 +62,7 @@ interface ConeInferenceContext : TypeSystemInferenceExtensionContext,
         when (constructor) {
             is ConeClassLikeSymbol -> return ConeClassTypeImpl(
                 constructor.toLookupTag(),
-                arguments.cast(),
+                (arguments as List<ConeKotlinTypeProjection>).toTypedArray(),
                 nullable
             )
             else -> error("!")
@@ -248,6 +250,7 @@ interface ConeInferenceContext : TypeSystemInferenceExtensionContext,
     }
 
     override fun typeSubstitutorByTypeConstructor(map: Map<TypeConstructorMarker, KotlinTypeMarker>): TypeSubstitutorMarker {
+        if (map.isEmpty()) return ConeSubstitutor.Empty
         return object : AbstractConeSubstitutor(),
             TypeSubstitutorMarker {
             override fun substituteType(type: ConeKotlinType): ConeKotlinType? {

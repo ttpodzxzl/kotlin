@@ -6,14 +6,15 @@
 package org.jetbrains.kotlin.fir.resolve.calls
 
 import org.jetbrains.kotlin.fir.expressions.*
-import org.jetbrains.kotlin.fir.symbols.ConeSymbol
+import org.jetbrains.kotlin.fir.returnExpressions
+import org.jetbrains.kotlin.fir.symbols.AbstractFirBasedSymbol
 import org.jetbrains.kotlin.resolve.calls.components.PostponedArgumentsAnalyzer
 import org.jetbrains.kotlin.resolve.calls.inference.model.ConstraintStorage
 import org.jetbrains.kotlin.resolve.calls.tasks.ExplicitReceiverKind
 
 class CandidateFactory(
     val inferenceComponents: InferenceComponents,
-    callInfo: CallInfo
+    val callInfo: CallInfo
 ) {
 
     val baseSystem: ConstraintStorage
@@ -28,26 +29,27 @@ class CandidateFactory(
     }
 
     fun createCandidate(
-        symbol: ConeSymbol,
+        symbol: AbstractFirBasedSymbol<*>,
         dispatchReceiverValue: ClassDispatchReceiverValue?,
-        implicitExtensionReceiverValue: ImplicitReceiverValue?,
+        implicitExtensionReceiverValue: ImplicitReceiverValue<*>?,
         explicitReceiverKind: ExplicitReceiverKind
     ): Candidate {
         return Candidate(
             symbol, dispatchReceiverValue, implicitExtensionReceiverValue,
-            explicitReceiverKind, inferenceComponents, baseSystem
+            explicitReceiverKind, inferenceComponents, baseSystem, callInfo
         )
     }
 }
 
 fun PostponedArgumentsAnalyzer.Context.addSubsystemFromExpression(expression: FirExpression) {
     when (expression) {
-        is FirFunctionCall -> expression.candidate()?.let { addOtherSystem(it.system.asReadOnlyStorage()) }
+        is FirFunctionCall, is FirCallLikeControlFlowExpression -> (expression as FirResolvable).candidate()?.let { addOtherSystem(it.system.asReadOnlyStorage()) }
         is FirWrappedArgumentExpression -> addSubsystemFromExpression(expression.expression)
+        is FirBlock -> expression.returnExpressions().forEach { addSubsystemFromExpression(it) }
     }
 }
 
-internal fun FirQualifiedAccess.candidate(): Candidate? {
+internal fun FirResolvable.candidate(): Candidate? {
     return when (val callee = this.calleeReference) {
         is FirNamedReferenceWithCandidate -> return callee.candidate
         else -> null

@@ -7,11 +7,10 @@ package org.jetbrains.kotlin.fir.deserialization
 
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.impl.FirTypeParameterImpl
+import org.jetbrains.kotlin.fir.declarations.impl.addDefaultBoundIfNecessary
 import org.jetbrains.kotlin.fir.resolve.toTypeProjection
-import org.jetbrains.kotlin.fir.resolve.transformers.firUnsafe
 import org.jetbrains.kotlin.fir.symbols.*
-import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirTypeAliasSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.types.impl.ConeAbbreviatedTypeImpl
@@ -68,11 +67,11 @@ class FirTypeDeserializer(
         }
     }
 
-    private val typeParameterDescriptors =
+    private val typeParameterDescriptors: Map<Int, FirTypeParameterSymbol> =
         if (typeParameterProtos.isEmpty()) {
-            mapOf<Int, ConeTypeParameterSymbol>()
+            mapOf()
         } else {
-            val result = LinkedHashMap<Int, ConeTypeParameterSymbol>()
+            val result = LinkedHashMap<Int, FirTypeParameterSymbol>()
             for ((index, proto) in typeParameterProtos.withIndex()) {
                 if (!proto.hasId()) continue
                 val name = nameResolver.getName(proto.name)
@@ -94,27 +93,22 @@ class FirTypeDeserializer(
     init {
         for ((index, proto) in typeParameterProtos.withIndex()) {
             if (!proto.hasId()) continue
-            val symbol = typeParameterDescriptors[proto.id] as FirTypeParameterSymbol
-            val declaration = symbol.firUnsafe<FirTypeParameterImpl>()
+            val symbol = typeParameterDescriptors[proto.id]!!
+            val declaration = symbol.fir as FirTypeParameterImpl
             declaration.apply {
                 proto.upperBoundList.mapTo(bounds) {
-                    FirResolvedTypeRefImpl(session, null, type(it), emptyList())
+                    FirResolvedTypeRefImpl(null, type(it), emptyList())
                 }
+                addDefaultBoundIfNecessary()
             }
         }
     }
 
-    val ownTypeParameters: List<ConeTypeParameterSymbol>
+    val ownTypeParameters: List<FirTypeParameterSymbol>
         get() = typeParameterDescriptors.values.toList()
 
 
-    fun ConeClassLikeSymbol.typeParameters(): List<ConeTypeParameterSymbol> = when (this) {
-        is FirTypeAliasSymbol -> fir.typeParameters
-        is FirClassSymbol -> fir.typeParameters
-        else -> error("?!id:2")
-    }.map {
-        it.symbol
-    }
+    fun FirClassLikeSymbol<*>.typeParameters(): List<ConeTypeParameterSymbol> = fir.typeParameters.map { it.symbol }
 
     fun simpleType(proto: ProtoBuf.Type): ConeLookupTagBasedType? {
 

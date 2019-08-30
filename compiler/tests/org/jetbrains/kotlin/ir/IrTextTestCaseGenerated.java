@@ -1017,6 +1017,11 @@ public class IrTextTestCaseGenerated extends AbstractIrTextTestCase {
             runTest("compiler/testData/ir/irText/expressions/kt30020.kt");
         }
 
+        @TestMetadata("kt30796.kt")
+        public void testKt30796() throws Exception {
+            runTest("compiler/testData/ir/irText/expressions/kt30796.kt");
+        }
+
         @TestMetadata("lambdaInCAO.kt")
         public void testLambdaInCAO() throws Exception {
             runTest("compiler/testData/ir/irText/expressions/lambdaInCAO.kt");
@@ -1362,9 +1367,29 @@ public class IrTextTestCaseGenerated extends AbstractIrTextTestCase {
                 KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/ir/irText/expressions/sam"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
             }
 
+            @TestMetadata("samByProjectedType.kt")
+            public void testSamByProjectedType() throws Exception {
+                runTest("compiler/testData/ir/irText/expressions/sam/samByProjectedType.kt");
+            }
+
             @TestMetadata("samConstructors.kt")
             public void testSamConstructors() throws Exception {
                 runTest("compiler/testData/ir/irText/expressions/sam/samConstructors.kt");
+            }
+
+            @TestMetadata("samConversionInGenericConstructorCall.kt")
+            public void testSamConversionInGenericConstructorCall() throws Exception {
+                runTest("compiler/testData/ir/irText/expressions/sam/samConversionInGenericConstructorCall.kt");
+            }
+
+            @TestMetadata("samConversionInGenericConstructorCall_NI.kt")
+            public void testSamConversionInGenericConstructorCall_NI() throws Exception {
+                runTest("compiler/testData/ir/irText/expressions/sam/samConversionInGenericConstructorCall_NI.kt");
+            }
+
+            @TestMetadata("samConversionToGeneric.kt")
+            public void testSamConversionToGeneric() throws Exception {
+                runTest("compiler/testData/ir/irText/expressions/sam/samConversionToGeneric.kt");
             }
 
             @TestMetadata("samConversions.kt")
@@ -1602,6 +1627,11 @@ public class IrTextTestCaseGenerated extends AbstractIrTextTestCase {
             KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
         }
 
+        @TestMetadata("abbreviatedTypes.kt")
+        public void testAbbreviatedTypes() throws Exception {
+            runTest("compiler/testData/ir/irText/types/abbreviatedTypes.kt");
+        }
+
         public void testAllFilesPresentInTypes() throws Exception {
             KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/ir/irText/types"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
         }
@@ -1614,6 +1644,11 @@ public class IrTextTestCaseGenerated extends AbstractIrTextTestCase {
         @TestMetadata("explicitEqualsAndCompareToCallsOnPlatformTypeReceiver.kt")
         public void testExplicitEqualsAndCompareToCallsOnPlatformTypeReceiver() throws Exception {
             runTest("compiler/testData/ir/irText/types/explicitEqualsAndCompareToCallsOnPlatformTypeReceiver.kt");
+        }
+
+        @TestMetadata("genericPropertyReferenceType.kt")
+        public void testGenericPropertyReferenceType() throws Exception {
+            runTest("compiler/testData/ir/irText/types/genericPropertyReferenceType.kt");
         }
 
         @TestMetadata("intersectionType1_NI.kt")

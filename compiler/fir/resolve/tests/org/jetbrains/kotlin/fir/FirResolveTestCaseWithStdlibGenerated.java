@@ -79,14 +79,49 @@ public class FirResolveTestCaseWithStdlibGenerated extends AbstractFirResolveTes
         runTest("compiler/fir/resolve/testData/resolve/stdlib/helloWorld.kt");
     }
 
+    @TestMetadata("implicitReceiverOrder.kt")
+    public void testImplicitReceiverOrder() throws Exception {
+        runTest("compiler/fir/resolve/testData/resolve/stdlib/implicitReceiverOrder.kt");
+    }
+
     @TestMetadata("mapList.kt")
     public void testMapList() throws Exception {
         runTest("compiler/fir/resolve/testData/resolve/stdlib/mapList.kt");
     }
 
+    @TestMetadata("multipleImplicitReceivers.kt")
+    public void testMultipleImplicitReceivers() throws Exception {
+        runTest("compiler/fir/resolve/testData/resolve/stdlib/multipleImplicitReceivers.kt");
+    }
+
+    @TestMetadata("problems.kt")
+    public void testProblems() throws Exception {
+        runTest("compiler/fir/resolve/testData/resolve/stdlib/problems.kt");
+    }
+
+    @TestMetadata("recursiveBug.kt")
+    public void testRecursiveBug() throws Exception {
+        runTest("compiler/fir/resolve/testData/resolve/stdlib/recursiveBug.kt");
+    }
+
     @TestMetadata("reflectionClass.kt")
     public void testReflectionClass() throws Exception {
         runTest("compiler/fir/resolve/testData/resolve/stdlib/reflectionClass.kt");
+    }
+
+    @TestMetadata("simpleDelegateProvider.kt")
+    public void testSimpleDelegateProvider() throws Exception {
+        runTest("compiler/fir/resolve/testData/resolve/stdlib/simpleDelegateProvider.kt");
+    }
+
+    @TestMetadata("simpleDelegatedToMap.kt")
+    public void testSimpleDelegatedToMap() throws Exception {
+        runTest("compiler/fir/resolve/testData/resolve/stdlib/simpleDelegatedToMap.kt");
+    }
+
+    @TestMetadata("simpleLazy.kt")
+    public void testSimpleLazy() throws Exception {
+        runTest("compiler/fir/resolve/testData/resolve/stdlib/simpleLazy.kt");
     }
 
     @TestMetadata("topLevelResolve.kt")

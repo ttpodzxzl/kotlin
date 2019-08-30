@@ -7,9 +7,9 @@ package org.jetbrains.kotlin.backend.common.lower.loops
 
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.ir.Symbols
+import org.jetbrains.kotlin.backend.common.ir.isTopLevel
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
-import org.jetbrains.kotlin.backend.common.lower.irComposite
 import org.jetbrains.kotlin.backend.common.lower.irIfThen
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.*
@@ -18,13 +18,14 @@ import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrLoop
-import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrDoWhileLoopImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrWhileLoopImpl
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.ir.util.getPackageFragment
+import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.util.OperatorNameConventions
 
 /**
  * Contains the loop and expression to replace the old loop.
@@ -44,7 +45,8 @@ internal sealed class ForLoopHeader(
     val inductionVariable: IrVariable,
     val last: IrVariable,
     val step: IrVariable,
-    var loopVariable: IrVariable? = null
+    var loopVariable: IrVariable? = null,
+    val isLastInclusive: Boolean
 ) {
     /** Expression used to initialize the loop variable at the beginning of the loop. */
     abstract fun initializeLoopVariable(symbols: Symbols<CommonBackendContext>, builder: DeclarationIrBuilder): IrExpression
@@ -55,17 +57,34 @@ internal sealed class ForLoopHeader(
     /** Builds a new loop from the old loop. */
     abstract fun buildLoop(builder: DeclarationIrBuilder, oldLoop: IrLoop, newBody: IrExpression?): LoopReplacement
 
+    /** Statement used to increment the induction variable. */
+    fun incrementInductionVariable(builder: DeclarationIrBuilder): IrStatement = with(builder) {
+        // inductionVariable = inductionVariable + step
+        val plusFun = inductionVariable.type.getClass()!!.functions.first {
+            it.name.asString() == "plus" &&
+                    it.valueParameters.size == 1 &&
+                    it.valueParameters[0].type == step.type
+        }
+        irSetVar(
+            inductionVariable.symbol, irCallOp(
+                plusFun.symbol, plusFun.returnType,
+                irGet(inductionVariable),
+                irGet(step)
+            )
+        )
+    }
+
     protected fun buildLoopCondition(builder: DeclarationIrBuilder): IrExpression =
         with(builder) {
             val builtIns = context.irBuiltIns
             val progressionType = headerInfo.progressionType
             val progressionKotlinType = progressionType.elementType(builtIns).toKotlinType()
             val compFun =
-                if (headerInfo.isLastInclusive) builtIns.lessOrEqualFunByOperandType[progressionKotlinType]!!
+                if (isLastInclusive) builtIns.lessOrEqualFunByOperandType[progressionKotlinType]!!
                 else builtIns.lessFunByOperandType[progressionKotlinType]!!
 
             // The default condition depends on the direction.
-            return when (headerInfo.direction) {
+            when (headerInfo.direction) {
                 ProgressionDirection.DECREASING ->
                     // last <= inductionVar (use `<` if last is exclusive)
                     irCall(compFun).apply {
@@ -114,7 +133,7 @@ internal class ProgressionLoopHeader(
     inductionVariable: IrVariable,
     last: IrVariable,
     step: IrVariable
-) : ForLoopHeader(headerInfo, inductionVariable, last, step) {
+) : ForLoopHeader(headerInfo, inductionVariable, last, step, isLastInclusive = true) {
 
     override fun initializeLoopVariable(symbols: Symbols<CommonBackendContext>, builder: DeclarationIrBuilder) = with(builder) {
         // loopVariable = inductionVariable
@@ -135,9 +154,9 @@ internal class ProgressionLoopHeader(
                 (if (headerInfo.isReversed) listOf(last, inductionVariable) else listOf(inductionVariable, last)) +
                 step
 
-    override fun buildLoop(builder: DeclarationIrBuilder, oldLoop: IrLoop, newBody: IrExpression?): LoopReplacement {
+    override fun buildLoop(builder: DeclarationIrBuilder, oldLoop: IrLoop, newBody: IrExpression?) =
         with(builder) {
-            var (newLoop, replacementExpression) = if (headerInfo.canOverflow) {
+            val newLoop = if (headerInfo.canOverflow) {
                 // If the induction variable CAN overflow, we cannot use it in the loop condition. Loop is lowered into something like:
                 //
                 //   if (inductionVar <= last) {
@@ -148,66 +167,57 @@ internal class ProgressionLoopHeader(
                 //       // Loop body
                 //     } while (loopVar != last)
                 //   }
-                assert(loopVariable != null)
-                val booleanNotFun = context.irBuiltIns.booleanClass.functions.first { it.owner.name.asString() == "not" }
-                val newCondition = irCallOp(booleanNotFun, booleanNotFun.owner.returnType, irCall(context.irBuiltIns.eqeqSymbol).apply {
-                    putValueArgument(0, irGet(loopVariable!!))
-                    putValueArgument(1, irGet(last))
-                })
-                val newLoop = IrDoWhileLoopImpl(oldLoop.startOffset, oldLoop.endOffset, oldLoop.type, oldLoop.origin).apply {
+                IrDoWhileLoopImpl(oldLoop.startOffset, oldLoop.endOffset, oldLoop.type, oldLoop.origin).apply {
                     label = oldLoop.label
-                    condition = newCondition
+                    condition = irNotEquals(irGet(loopVariable!!), irGet(last))
                     body = newBody
                 }
-                val notEmptyCheck = irIfThen(buildLoopCondition(builder), newLoop)
-                LoopReplacement(newLoop, notEmptyCheck)
             } else {
-                // If the induction variable can NOT overflow, use a simple while loop. Loop is lowered into something like:
+                // If the induction variable can NOT overflow, use a do-while loop. Loop is lowered into something like:
                 //
-                //   while (inductionVar <= last) {
-                //       val loopVar = inductionVar
-                //       inductionVar += step
-                //       // Loop body
+                //   if (inductionVar <= last) {
+                //     do {
+                //         val loopVar = inductionVar
+                //         inductionVar += step
+                //         // Loop body
+                //     } while (inductionVar <= last)
                 //   }
-                val newLoop = IrWhileLoopImpl(oldLoop.startOffset, oldLoop.endOffset, oldLoop.type, oldLoop.origin).apply {
+                //
+                // Even though this can be simplified into a simpler while loop, using if + do-while (i.e., doing a loop inversion)
+                // performs better in benchmarks. In cases where `last` is a constant, the `if` may be optimized away.
+                IrDoWhileLoopImpl(oldLoop.startOffset, oldLoop.endOffset, oldLoop.type, oldLoop.origin).apply {
                     label = oldLoop.label
                     condition = buildLoopCondition(this@with)
                     body = newBody
                 }
-                LoopReplacement(newLoop, newLoop)
             }
 
-            if (!headerInfo.isFirstInclusive) {
-                // Pre-increment the induction variable.
-                replacementExpression = irComposite(replacementExpression) {
-                    +buildIncrementInductionVariableExpression(this@with)
-                    +replacementExpression
-                }
-            }
-
-            return LoopReplacement(newLoop, replacementExpression)
+            val loopCondition = buildLoopCondition(this@with)
+            // Combine with the additional "not empty" condition, if any.
+            val notEmptyCheck =
+                irIfThen(headerInfo.additionalNotEmptyCondition?.let { context.andand(it, loopCondition) } ?: loopCondition, newLoop)
+            LoopReplacement(newLoop, notEmptyCheck)
         }
-    }
 }
 
-internal class ArrayLoopHeader(
-    override val headerInfo: ArrayHeaderInfo,
+internal class IndexedGetLoopHeader(
+    override val headerInfo: IndexedGetHeaderInfo,
     inductionVariable: IrVariable,
     last: IrVariable,
     step: IrVariable
-) : ForLoopHeader(headerInfo, inductionVariable, last, step) {
+) : ForLoopHeader(headerInfo, inductionVariable, last, step, isLastInclusive = false) {
 
     override fun initializeLoopVariable(symbols: Symbols<CommonBackendContext>, builder: DeclarationIrBuilder) = with(builder) {
         // inductionVar = loopVar[inductionVariable]
-        val arrayGetFun = headerInfo.arrayVariable.type.getClass()!!.functions.first { it.name.asString() == "get" }
-        irCall(arrayGetFun).apply {
-            dispatchReceiver = irGet(headerInfo.arrayVariable)
+        val indexedGetFun = headerInfo.objectVariable.type.getClass()!!.functions.first { it.name.asString() == "get" }
+        irCall(indexedGetFun).apply {
+            dispatchReceiver = irGet(headerInfo.objectVariable)
             putValueArgument(0, irGet(inductionVariable))
         }
     }
 
     override val declarations: List<IrStatement>
-        get() = listOf(headerInfo.arrayVariable, inductionVariable, last, step)
+        get() = listOf(headerInfo.objectVariable, inductionVariable, last, step)
 
     override fun buildLoop(builder: DeclarationIrBuilder, oldLoop: IrLoop, newBody: IrExpression?): LoopReplacement = with(builder) {
         // Loop is lowered into something like:
@@ -224,14 +234,7 @@ internal class ArrayLoopHeader(
             condition = buildLoopCondition(this@with)
             body = newBody
         }
-        val replacementExpression = if (!headerInfo.isFirstInclusive) {
-            // Pre-increment the induction variable.
-            irComposite(newLoop) {
-                +buildIncrementInductionVariableExpression(this@with)
-                +newLoop
-            }
-        } else newLoop
-        LoopReplacement(newLoop, replacementExpression)
+        LoopReplacement(newLoop, newLoop)
     }
 }
 
@@ -262,8 +265,29 @@ internal class HeaderProcessor(
         }
 
         // Get the iterable expression, e.g., `someIterable` in the following loop variable declaration:
+        //
         //   val it = someIterable.iterator()
-        val iterable = (variable.initializer as? IrCall)?.dispatchReceiver
+        //
+        // If the `iterator` method is an extension method, make sure that we are calling a known extension
+        // method in the library such as `kotlin.text.StringsKt.iterator` with no value arguments. Other
+        // extension methods could return user-defined iterators.
+        val iterable = (variable.initializer as? IrCall)?.let {
+            val extensionReceiver = it.extensionReceiver
+            if (extensionReceiver != null) {
+                val function = it.symbol.owner
+                if (it.valueArgumentsCount == 0
+                    && function.isTopLevel
+                    && function.getPackageFragment()?.fqName == FqName("kotlin.text")
+                    && function.name == OperatorNameConventions.ITERATOR) {
+                    extensionReceiver
+                } else {
+                    null
+                }
+            } else {
+                it.dispatchReceiver
+            }
+        }
+
         // Collect loop information from the iterable expression.
         val headerInfo = iterable?.accept(headerInfoBuilder, null)
             ?: return null  // If the iterable is not supported.
@@ -317,7 +341,7 @@ internal class HeaderProcessor(
                 )
 
                 return when (headerInfo) {
-                    is ArrayHeaderInfo -> ArrayLoopHeader(
+                    is IndexedGetHeaderInfo -> IndexedGetLoopHeader(
                         headerInfo,
                         inductionVariable,
                         lastValue,
@@ -340,30 +364,4 @@ internal class HeaderProcessor(
         } else {
             expression
         }
-
-    private fun IrExpression.castIfNecessary(targetType: IrType, numberCastFunctionName: Name): IrExpression {
-        return if (type.toKotlinType() == targetType.toKotlinType()) {
-            this
-        } else {
-            val function = type.getClass()!!.functions.first { it.name == numberCastFunctionName }
-            IrCallImpl(startOffset, endOffset, function.returnType, function.symbol)
-                .apply { dispatchReceiver = this@castIfNecessary }
-        }
-    }
-}
-
-internal fun ForLoopHeader.buildIncrementInductionVariableExpression(builder: DeclarationIrBuilder): IrExpression = with(builder) {
-    // inductionVariable = inductionVariable + step
-    val plusFun = inductionVariable.type.getClass()!!.functions.first {
-        it.name.asString() == "plus" &&
-                it.valueParameters.size == 1 &&
-                it.valueParameters[0].type.toKotlinType() == step.type.toKotlinType()
-    }
-    irSetVar(
-        inductionVariable.symbol, irCallOp(
-            plusFun.symbol, plusFun.returnType,
-            irGet(inductionVariable),
-            irGet(step)
-        )
-    )
 }

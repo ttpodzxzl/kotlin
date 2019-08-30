@@ -1,17 +1,6 @@
 /*
- * Copyright 2010-2017 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2010-2019 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
 package org.jetbrains.kotlin.generators.tests
@@ -64,10 +53,7 @@ import org.jetbrains.kotlin.idea.conversion.copy.AbstractLiteralKotlinToKotlinCo
 import org.jetbrains.kotlin.idea.conversion.copy.AbstractLiteralTextToKotlinCopyPasteTest
 import org.jetbrains.kotlin.idea.conversion.copy.AbstractTextJavaToKotlinCopyPasteConversionTest
 import org.jetbrains.kotlin.idea.coverage.AbstractKotlinCoverageOutputFilesTest
-import org.jetbrains.kotlin.idea.debugger.AbstractFileRankingTest
-import org.jetbrains.kotlin.idea.debugger.AbstractKotlinSteppingTest
-import org.jetbrains.kotlin.idea.debugger.AbstractPositionManagerTest
-import org.jetbrains.kotlin.idea.debugger.AbstractSmartStepIntoTest
+import org.jetbrains.kotlin.idea.debugger.*
 import org.jetbrains.kotlin.idea.debugger.evaluate.*
 import org.jetbrains.kotlin.idea.debugger.sequence.exec.AbstractSequenceTraceTestCase
 import org.jetbrains.kotlin.idea.decompiler.navigation.AbstractNavigateToDecompiledLibraryTest
@@ -83,6 +69,7 @@ import org.jetbrains.kotlin.idea.editor.AbstractMultiLineStringIndentTest
 import org.jetbrains.kotlin.idea.editor.backspaceHandler.AbstractBackspaceHandlerTest
 import org.jetbrains.kotlin.idea.editor.quickDoc.AbstractQuickDocProviderTest
 import org.jetbrains.kotlin.idea.filters.AbstractKotlinExceptionFilterTest
+import org.jetbrains.kotlin.idea.fir.AbstractFirLazyResolveTest
 import org.jetbrains.kotlin.idea.fir.AbstractFirMultiModuleResolveTest
 import org.jetbrains.kotlin.idea.folding.AbstractKotlinFoldingTest
 import org.jetbrains.kotlin.idea.hierarchy.AbstractHierarchyTest
@@ -154,7 +141,9 @@ import org.jetbrains.kotlin.kapt3.test.AbstractClassFileToSourceStubConverterTes
 import org.jetbrains.kotlin.kapt3.test.AbstractKotlinKaptContextTest
 import org.jetbrains.kotlin.nj2k.AbstractNewJavaToKotlinConverterSingleFileTest
 import org.jetbrains.kotlin.nj2k.AbstractNewJavaToKotlinCopyPasteConversionTest
-import org.jetbrains.kotlin.nj2k.AbstractNullabilityAnalysisTest
+import org.jetbrains.kotlin.nj2k.AbstractTextNewJavaToKotlinCopyPasteConversionTest
+import org.jetbrains.kotlin.nj2k.inference.common.AbstractCommonConstraintCollectorTest
+import org.jetbrains.kotlin.nj2k.inference.nullability.AbstractNullabilityInferenceTest
 import org.jetbrains.kotlin.noarg.AbstractBlackBoxCodegenTestForNoArg
 import org.jetbrains.kotlin.noarg.AbstractBytecodeListingTestForNoArg
 import org.jetbrains.kotlin.psi.patternMatching.AbstractPsiUnifierTest
@@ -164,9 +153,9 @@ import org.jetbrains.kotlin.search.AbstractAnnotatedMembersSearchTest
 import org.jetbrains.kotlin.search.AbstractInheritorsSearchTest
 import org.jetbrains.kotlin.shortenRefs.AbstractShortenRefsTest
 import org.jetbrains.kotlin.test.TargetBackend
+import org.jetbrains.kotlinx.serialization.AbstractSerializationIrBytecodeListingTest
 import org.jetbrains.kotlinx.serialization.AbstractSerializationPluginBytecodeListingTest
 import org.jetbrains.kotlinx.serialization.AbstractSerializationPluginDiagnosticTest
-import org.jetbrains.kotlinx.serialization.AbstractSerializationIrBytecodeListingTest
 
 fun main(args: Array<String>) {
     System.setProperty("java.awt.headless", "true")
@@ -256,7 +245,7 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractNavigateToLibrarySourceTestWithJS> {
-            model("decompiler/navigation/usercode", testClassName ="UsercodeWithJSModule")
+            model("decompiler/navigation/usercode", testClassName = "UsercodeWithJSModule")
         }
 
         testClass<AbstractNavigateToDecompiledLibraryTest> {
@@ -500,15 +489,21 @@ fun main(args: Array<String>) {
 
         testClass<AbstractFormatterTest> {
             model("formatter", pattern = """^([^\.]+)\.after\.kt.*$""")
-            model("formatter", pattern = """^([^\.]+)\.after\.inv\.kt.*$""",
-                  testMethod = "doTestInverted", testClassName = "FormatterInverted")
+            model(
+                "formatter", pattern = """^([^\.]+)\.after\.inv\.kt.*$""",
+                testMethod = "doTestInverted", testClassName = "FormatterInverted"
+            )
         }
 
         testClass<AbstractTypingIndentationTestBase> {
-            model("indentationOnNewline", pattern = """^([^\.]+)\.after\.kt.*$""", testMethod = "doNewlineTest",
-                  testClassName = "DirectSettings")
-            model("indentationOnNewline", pattern = """^([^\.]+)\.after\.inv\.kt.*$""", testMethod = "doNewlineTestWithInvert",
-                  testClassName = "InvertedSettings")
+            model(
+                "indentationOnNewline", pattern = """^([^\.]+)\.after\.kt.*$""", testMethod = "doNewlineTest",
+                testClassName = "DirectSettings"
+            )
+            model(
+                "indentationOnNewline", pattern = """^([^\.]+)\.after\.inv\.kt.*$""", testMethod = "doNewlineTestWithInvert",
+                testClassName = "InvertedSettings"
+            )
         }
 
         testClass<AbstractDiagnosticMessageTest> {
@@ -552,8 +547,20 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractInsertImportOnPasteTest> {
-            model("copyPaste/imports", pattern = KT_WITHOUT_DOTS_IN_NAME, testMethod = "doTestCopy", testClassName = "Copy", recursive = false)
-            model("copyPaste/imports", pattern = KT_WITHOUT_DOTS_IN_NAME, testMethod = "doTestCut", testClassName = "Cut", recursive = false)
+            model(
+                "copyPaste/imports",
+                pattern = KT_WITHOUT_DOTS_IN_NAME,
+                testMethod = "doTestCopy",
+                testClassName = "Copy",
+                recursive = false
+            )
+            model(
+                "copyPaste/imports",
+                pattern = KT_WITHOUT_DOTS_IN_NAME,
+                testMethod = "doTestCut",
+                testClassName = "Cut",
+                recursive = false
+            )
         }
 
         testClass<AbstractMoveOnCutPasteTest> {
@@ -633,6 +640,10 @@ fun main(args: Array<String>) {
             model("debugger/positionManager", recursive = false, extension = null, testClassName = "MultiFile")
         }
 
+        testClass<AbstractBreakpointApplicabilityTest> {
+            model("debugger/breakpointApplicability")
+        }
+
         testClass<AbstractKotlinExceptionFilterTest> {
             model("debugger/exceptionFilter", pattern = """^([^\.]+)$""", recursive = false)
         }
@@ -642,9 +653,24 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractKotlinSteppingTest> {
-            model("debugger/tinyApp/src/stepping/stepIntoAndSmartStepInto", pattern = KT_WITHOUT_DOTS_IN_NAME, testMethod = "doStepIntoTest", testClassName = "StepInto")
-            model("debugger/tinyApp/src/stepping/stepIntoAndSmartStepInto", pattern = KT_WITHOUT_DOTS_IN_NAME, testMethod = "doSmartStepIntoTest", testClassName = "SmartStepInto")
-            model("debugger/tinyApp/src/stepping/stepInto", pattern = KT_WITHOUT_DOTS_IN_NAME, testMethod = "doStepIntoTest", testClassName = "StepIntoOnly")
+            model(
+                "debugger/tinyApp/src/stepping/stepIntoAndSmartStepInto",
+                pattern = KT_WITHOUT_DOTS_IN_NAME,
+                testMethod = "doStepIntoTest",
+                testClassName = "StepInto"
+            )
+            model(
+                "debugger/tinyApp/src/stepping/stepIntoAndSmartStepInto",
+                pattern = KT_WITHOUT_DOTS_IN_NAME,
+                testMethod = "doSmartStepIntoTest",
+                testClassName = "SmartStepInto"
+            )
+            model(
+                "debugger/tinyApp/src/stepping/stepInto",
+                pattern = KT_WITHOUT_DOTS_IN_NAME,
+                testMethod = "doStepIntoTest",
+                testClassName = "StepIntoOnly"
+            )
             model("debugger/tinyApp/src/stepping/stepOut", pattern = KT_WITHOUT_DOTS_IN_NAME, testMethod = "doStepOutTest")
             model("debugger/tinyApp/src/stepping/stepOver", pattern = KT_WITHOUT_DOTS_IN_NAME, testMethod = "doStepOverTest")
             model("debugger/tinyApp/src/stepping/stepOverForce", pattern = KT_WITHOUT_DOTS_IN_NAME, testMethod = "doStepOverForceTest")
@@ -682,8 +708,12 @@ fun main(args: Array<String>) {
             model("multiModuleHighlighting/hierarchicalExpectActualMatching/", recursive = false, extension = null)
         }
 
+        testClass<AbstractMultiplatformAnalysisTest> {
+            model("multiplatform", recursive = false, extension = null)
+        }
+
         testClass<AbstractQuickFixMultiModuleTest> {
-            model("multiModuleQuickFix", recursive = false, extension = null)
+            model("multiModuleQuickFix", extension = null, deep = 1)
         }
 
         testClass<AbstractKotlinGotoImplementationMultiModuleTest> {
@@ -806,9 +836,45 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractScratchRunActionTest> {
-            model("scratch", extension = "kts", testMethod = "doCompilingTest", testClassName = "Compiling", recursive = false)
-            model("scratch", extension = "kts", testMethod = "doReplTest", testClassName = "Repl", recursive = false)
-            model("scratch/multiFile", extension = null, testMethod = "doMultiFileTest", recursive = false)
+            model(
+                "scratch",
+                extension = "kts",
+                testMethod = "doScratchCompilingTest",
+                testClassName = "ScratchCompiling",
+                recursive = false
+            )
+            model("scratch", extension = "kts", testMethod = "doScratchReplTest", testClassName = "ScratchRepl", recursive = false)
+            model(
+                "scratch/multiFile",
+                extension = null,
+                testMethod = "doScratchMultiFileTest",
+                testClassName = "ScratchMultiFile",
+                recursive = false
+            )
+
+            model(
+                "worksheet",
+                extension = "ws.kts",
+                testMethod = "doWorksheetCompilingTest",
+                testClassName = "WorksheetCompiling",
+                recursive = false
+            )
+            model("worksheet", extension = "ws.kts", testMethod = "doWorksheetReplTest", testClassName = "WorksheetRepl", recursive = false)
+            model(
+                "worksheet/multiFile",
+                extension = null,
+                testMethod = "doWorksheetMultiFileTest",
+                testClassName = "WorksheetMultiFile",
+                recursive = false
+            )
+
+            model(
+                "scratch/rightPanelOutput",
+                extension = "kts",
+                testMethod = "doRightPreviewPanelOutputTest",
+                testClassName = "ScratchRightPanelOutput",
+                recursive = false
+            )
         }
 
         testClass<AbstractScratchLineMarkersTest> {
@@ -817,6 +883,10 @@ fun main(args: Array<String>) {
 
         testClass<AbstractFirMultiModuleResolveTest> {
             model("fir/multiModule", recursive = false, extension = null)
+        }
+
+        testClass<AbstractFirLazyResolveTest> {
+            model("fir/lazyResolve", extension = "test", singleClass = true, filenameStartsLowerCase = true)
         }
     }
 
@@ -863,7 +933,11 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractIdeCompiledLightClassTest> {
-            model("asJava/lightClasses", excludeDirs = listOf("local", "compilationErrors", "ideRegression"), pattern = KT_OR_KTS_WITHOUT_DOTS_IN_NAME)
+            model(
+                "asJava/lightClasses",
+                excludeDirs = listOf("local", "compilationErrors", "ideRegression"),
+                pattern = KT_OR_KTS_WITHOUT_DOTS_IN_NAME
+            )
         }
     }
 
@@ -923,7 +997,7 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractCompletionCharFilterTest> {
-            model("handlers/charFilter")
+            model("handlers/charFilter", pattern = KT_WITHOUT_DOTS_IN_NAME)
         }
 
         testClass<AbstractMultiFileJvmBasicCompletionTest> {
@@ -980,13 +1054,19 @@ fun main(args: Array<String>) {
 
     testGroup("nj2k/tests", "nj2k/testData") {
         testClass<AbstractNewJavaToKotlinConverterSingleFileTest> {
-            model("newJ2k", extension = "java")
+            model("newJ2k", pattern = """^([^\.]+)\.java$""")
+        }
+        testClass<AbstractCommonConstraintCollectorTest> {
+            model("inference/common")
+        }
+        testClass<AbstractNullabilityInferenceTest> {
+            model("inference/nullability")
         }
         testClass<AbstractNewJavaToKotlinCopyPasteConversionTest> {
             model("copyPaste", pattern = """^([^\.]+)\.java$""")
         }
-        testClass<AbstractNullabilityAnalysisTest> {
-            model("nullabilityAnalysis")
+        testClass<AbstractTextNewJavaToKotlinCopyPasteConversionTest> {
+            model("copyPastePlainText", pattern = """^([^\.]+)\.txt$""")
         }
     }
 
@@ -1056,15 +1136,23 @@ fun main(args: Array<String>) {
     }
 
     testGroup("compiler/incremental-compilation-impl/test", "jps-plugin/testData") {
-        testClass<AbstractIncrementalJvmCompilerRunnerTest> {
-            model("incremental/pureKotlin", extension = null, recursive = false)
-            model("incremental/classHierarchyAffected", extension = null, recursive = false)
-            model("incremental/inlineFunCallSite", extension = null, excludeParentDirs = true)
-            model("incremental/withJava", extension = null, excludeParentDirs = true)
-            model("incremental/incrementalJvmCompilerOnly", extension = null, excludeParentDirs = true)
+        fun incrementalJvmTestData(targetBackend: TargetBackend): TestGroup.TestClass.() -> Unit = {
+            model("incremental/pureKotlin", extension = null, recursive = false, targetBackend = targetBackend)
+            model("incremental/classHierarchyAffected", extension = null, recursive = false, targetBackend = targetBackend)
+            model("incremental/inlineFunCallSite", extension = null, excludeParentDirs = true, targetBackend = targetBackend)
+            model("incremental/withJava", extension = null, excludeParentDirs = true, targetBackend = targetBackend)
+            model("incremental/incrementalJvmCompilerOnly", extension = null, excludeParentDirs = true, targetBackend = targetBackend)
         }
+        testClass<AbstractIncrementalJvmCompilerRunnerTest>(init = incrementalJvmTestData(TargetBackend.JVM))
+        testClass<AbstractIrIncrementalJvmCompilerRunnerTest>(init = incrementalJvmTestData(TargetBackend.JVM_IR))
 
         testClass<AbstractIncrementalJsCompilerRunnerTest> {
+            model("incremental/pureKotlin", extension = null, recursive = false)
+            model("incremental/classHierarchyAffected", extension = null, recursive = false)
+            model("incremental/js", extension = null, excludeParentDirs = true)
+        }
+
+        testClass<AbstractIncrementalJsKlibCompilerRunnerTest> {
             model("incremental/pureKotlin", extension = null, recursive = false)
             model("incremental/classHierarchyAffected", extension = null, recursive = false)
             model("incremental/js", extension = null, excludeParentDirs = true)
@@ -1082,7 +1170,10 @@ fun main(args: Array<String>) {
         }
     }
 
-    testGroup("plugins/android-extensions/android-extensions-compiler/test",  "plugins/android-extensions/android-extensions-compiler/testData") {
+    testGroup(
+        "plugins/android-extensions/android-extensions-compiler/test",
+        "plugins/android-extensions/android-extensions-compiler/testData"
+    ) {
         testClass<AbstractAndroidSyntheticPropertyDescriptorTest> {
             model("descriptors", recursive = false, extension = null)
         }
@@ -1190,6 +1281,11 @@ fun main(args: Array<String>) {
             model("highlighter", testMethod = "doPerfTest")
         }
 
+        testClass<AbstractPerformanceAddImportTest> {
+            model("addImport", testMethod = "doPerfTest", pattern = KT_WITHOUT_DOTS_IN_NAME)
+        }
+
+
     }
 
     testGroup("idea/performanceTests", "idea/idea-completion/testData") {
@@ -1210,7 +1306,7 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractPerformanceCompletionCharFilterTest> {
-            model("handlers/charFilter", testMethod = "doPerfTest")
+            model("handlers/charFilter", testMethod = "doPerfTest", pattern = KT_WITHOUT_DOTS_IN_NAME)
         }
     }
 /*

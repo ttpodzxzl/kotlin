@@ -14,7 +14,11 @@ import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
 import org.jetbrains.kotlin.resolve.scopes.MemberScopeImpl
 import org.jetbrains.kotlin.storage.LockBasedStorageManager
+import org.jetbrains.kotlin.types.checker.KotlinTypeRefiner
 import org.jetbrains.kotlin.utils.Printer
+import kotlin.script.experimental.api.ScriptCompilationConfiguration
+import kotlin.script.experimental.api.providedProperties
+import kotlin.script.experimental.jvm.util.toValidJvmIdentifier
 
 class ScriptProvidedPropertiesDescriptor(script: LazyScriptDescriptor) :
     MutableClassDescriptor(
@@ -39,13 +43,12 @@ class ScriptProvidedPropertiesDescriptor(script: LazyScriptDescriptor) :
         )
     }
 
-    override fun getUnsubstitutedMemberScope(): MemberScope = memberScope()
+    override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope = memberScope()
 
     val properties: () -> List<ScriptProvidedPropertyDescriptor> = script.resolveSession.storageManager.createLazyValue {
-        script.scriptDefinition().legacyDefinition.providedProperties.mapNotNull { (name, type) ->
-            script.findTypeDescriptor(type, Errors.MISSING_SCRIPT_PROVIDED_PROPERTY_CLASS)?.let {
-                name to it
-            }
+        script.scriptCompilationConfiguration()[ScriptCompilationConfiguration.providedProperties].orEmpty().mapNotNull { (name, type) ->
+            script.findTypeDescriptor(script.getScriptingClass(type), Errors.MISSING_SCRIPT_PROVIDED_PROPERTY_CLASS)
+                ?.let { name.toValidJvmIdentifier() to it }
         }.map { (name, classDescriptor) ->
             ScriptProvidedPropertyDescriptor(
                 Name.identifier(name),

@@ -39,6 +39,7 @@ include ":kotlin-build-common",
         ":compiler:fir:tree",
         ":compiler:fir:tree:visitors-generator",
         ":compiler:fir:psi2fir",
+        ":compiler:fir:lightTree",
         ":compiler:fir:fir2ir",
         ":compiler:fir:resolve",
         ":compiler:fir:java",
@@ -56,6 +57,7 @@ include ":kotlin-build-common",
         ":compiler:ir.serialization.common",
         ":compiler:ir.serialization.js",
         ":compiler:backend.js",
+        ":compiler:backend.wasm",
         ":compiler:backend.jvm",
         ":compiler:backend-common",
         ":compiler:backend",
@@ -210,6 +212,7 @@ include ":kotlin-build-common",
         ":libraries:tools:mutability-annotations-compat",
         ":include:kotlin-compiler",
         ":plugins:jvm-abi-gen",
+        ":plugins:jvm-abi-gen-embeddable",
 
         // plugin markers:
         ':kotlin-gradle-plugin:plugin-marker',
@@ -227,7 +230,8 @@ def flags = BuildPropertiesKt.getKotlinBuildPropertiesForSettings(settings)
 
 if (flags.includeCidrPlugins) {
     logger.info("Including CIDR plugins in settings.gradle")
-    include ":kotlin-ultimate:ide:cidr-native",
+    include ":kotlin-ultimate:ide:common-native",
+            ":kotlin-ultimate:ide:cidr-native",
             ":kotlin-ultimate:ide:clion-native",
             ":kotlin-ultimate:ide:appcode-native",
             ":kotlin-ultimate:prepare:cidr-plugin",
@@ -237,12 +241,11 @@ if (flags.includeCidrPlugins) {
     logger.info("NOT including CIDR plugins in settings.gradle")
 }
 
-def isTeamcityBuild = hasProperty("teamcity") || System.getenv("TEAMCITY_VERSION") != null
-if (flags.kotlinUltimateExists && (isTeamcityBuild || flags.intellijUltimateEnabled)) {
-    include(
-            ":kotlin-ultimate:ultimate",
-            ":kotlin-ultimate:ultimate:ultimate-runner"
-    )
+if (flags.includeUltimate) {
+    include ":kotlin-ultimate:ultimate",
+            ":kotlin-ultimate:ultimate:ultimate-runner",
+            ":kotlin-ultimate:ide:common-native",
+            ":kotlin-ultimate:ide:ultimate-native"
     logger.info("Including extension for IJ Ultimate in settings.gradle")
 } else {
     logger.info("NOT including extension for IJ Ultimate in settings.gradle")
@@ -320,6 +323,7 @@ project(':compiler:ir.psi2ir').projectDir = "$rootDir/compiler/ir/ir.psi2ir" as 
 project(':compiler:ir.ir2cfg').projectDir = "$rootDir/compiler/ir/ir.ir2cfg" as File
 project(':compiler:ir.backend.common').projectDir = "$rootDir/compiler/ir/backend.common" as File
 project(':compiler:backend.js').projectDir = "$rootDir/compiler/ir/backend.js" as File
+project(':compiler:backend.wasm').projectDir = "$rootDir/compiler/ir/backend.wasm" as File
 project(':compiler:backend.jvm').projectDir = "$rootDir/compiler/ir/backend.jvm" as File
 project(':compiler:ir.serialization.common').projectDir = "$rootDir/compiler/ir/serialization.common" as File
 project(':compiler:ir.serialization.js').projectDir = "$rootDir/compiler/ir/serialization.js" as File
@@ -390,6 +394,7 @@ project(':pill:generate-all-tests').projectDir = "$rootDir/plugins/pill/generate
 project(':kotlin-imports-dumper-compiler-plugin').projectDir = "$rootDir/plugins/imports-dumper" as File
 project(':libraries:kotlin-prepush-hook').projectDir = "$rootDir/libraries/tools/kotlin-prepush-hook" as File
 project(':plugins:jvm-abi-gen').projectDir = "$rootDir/plugins/jvm-abi-gen" as File
+project(':plugins:jvm-abi-gen-embeddable').projectDir = "$rootDir/plugins/jvm-abi-gen/embeddable" as File
 project(":dukat").projectDir = "$rootDir/libraries/tools/dukat" as File
 
 // plugin markers:

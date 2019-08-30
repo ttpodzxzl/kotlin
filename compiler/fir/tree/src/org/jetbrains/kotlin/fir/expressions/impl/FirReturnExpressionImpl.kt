@@ -6,20 +6,21 @@
 package org.jetbrains.kotlin.fir.expressions.impl
 
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.fir.*
+import org.jetbrains.kotlin.fir.FirElement
+import org.jetbrains.kotlin.fir.FirTarget
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
+import org.jetbrains.kotlin.fir.transformSingle
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.impl.FirImplicitNothingTypeRef
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 
 class FirReturnExpressionImpl(
-    session: FirSession,
     psi: PsiElement?,
     override var result: FirExpression
-) : FirReturnExpression(session, psi) {
-    override lateinit var target: FirTarget<FirFunction>
+) : FirReturnExpression(psi) {
+    override lateinit var target: FirTarget<FirFunction<*>>
 
     override fun <D> transformChildren(transformer: FirTransformer<D>, data: D): FirElement {
         result = result.transformSingle(transformer, data)
@@ -27,7 +28,7 @@ class FirReturnExpressionImpl(
         return super.transformChildren(transformer, data)
     }
 
-    override var typeRef: FirTypeRef = FirImplicitNothingTypeRef(session, psi)
+    override var typeRef: FirTypeRef = FirImplicitNothingTypeRef(psi)
 
     override fun replaceTypeRef(newTypeRef: FirTypeRef) {}
 }

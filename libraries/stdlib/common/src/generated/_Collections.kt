@@ -785,9 +785,9 @@ public fun <T> Iterable<T>.take(n: Int): List<T> {
     var count = 0
     val list = ArrayList<T>(n)
     for (item in this) {
-        if (count++ == n)
-            break
         list.add(item)
+        if (++count == n)
+            break
     }
     return list.optimizeReadOnlyList()
 }
@@ -1385,7 +1385,8 @@ public inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.mapTo(destinat
 }
 
 /**
- * Returns a lazy [Iterable] of [IndexedValue] for each element of the original collection.
+ * Returns a lazy [Iterable] that wraps each element of the original collection
+ * into an [IndexedValue] containing the index of that element and the element itself.
  */
 public fun <T> Iterable<T>.withIndex(): Iterable<IndexedValue<T>> {
     return IndexingIterable { iterator() }
@@ -1418,9 +1419,11 @@ public inline fun <T, K> Iterable<T>.distinctBy(selector: (T) -> K): List<T> {
 }
 
 /**
- * Returns a set containing all elements that are contained by both this set and the specified collection.
+ * Returns a set containing all elements that are contained by both this collection and the specified collection.
  * 
  * The returned set preserves the element iteration order of the original collection.
+ * 
+ * To get a set containing all elements that are contained at least in one of these collections use [union].
  */
 public infix fun <T> Iterable<T>.intersect(other: Iterable<T>): Set<T> {
     val set = this.toMutableSet()
@@ -1457,6 +1460,8 @@ public fun <T> Iterable<T>.toMutableSet(): MutableSet<T> {
  * The returned set preserves the element iteration order of the original collection.
  * Those elements of the [other] collection that are unique are iterated in the end
  * in the order of the [other] collection.
+ * 
+ * To get a set containing all elements that are contained in both collections use [intersect].
  */
 public infix fun <T> Iterable<T>.union(other: Iterable<T>): Set<T> {
     val set = this.toMutableSet()

@@ -349,7 +349,7 @@ class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIns
                 /**
                  * Converts this [$otherName] value to [$className].
                  *
-                 * The fractional part, if any, is rounded down.
+                 * The fractional part, if any, is rounded down towards zero.
                  * Returns zero if this `$otherName` value is negative or `NaN`, [$className.MAX_VALUE] if it's bigger than `$className.MAX_VALUE`.
                  */
                 """.trimIndent()
@@ -476,6 +476,13 @@ class UnsignedArrayGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIn
 
         // TODO: Make inline constructor, like in ByteArray
         out.println("""
+/**
+ * Creates a new array of the specified [size], where each element is calculated by calling the specified
+ * [init] function.
+ *
+ * The function [init] is called for each array element sequentially starting from the first one.
+ * It should return the value for an array element given its index.
+ */
 @SinceKotlin("1.3")
 @ExperimentalUnsignedTypes
 @kotlin.internal.InlineOnly

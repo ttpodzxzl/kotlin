@@ -12,27 +12,20 @@ import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccess
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 
 abstract class FirAbstractQualifiedAccess(
-    session: FirSession,
     psi: PsiElement?,
     final override var safe: Boolean = false
-) : FirAnnotatedStatement(session, psi), FirModifiableQualifiedAccess<FirReference> {
+) : FirAnnotatedStatement(psi), FirModifiableQualifiedAccess<FirReference> {
     final override lateinit var calleeReference: FirReference
 
     final override var explicitReceiver: FirExpression? = null
 
+    override var dispatchReceiver: FirExpression = FirNoReceiverExpression
+
+    override var extensionReceiver: FirExpression = FirNoReceiverExpression
+
     override fun <D> transformChildren(transformer: FirTransformer<D>, data: D): FirElement {
-        calleeReference = calleeReference.transformSingle(transformer, data)
-        explicitReceiver = explicitReceiver?.transformSingle(transformer, data)
+        super<FirModifiableQualifiedAccess>.transformChildren(transformer, data)
+
         return super<FirAnnotatedStatement>.transformChildren(transformer, data)
-    }
-
-    override fun <D> transformCalleeReference(transformer: FirTransformer<D>, data: D): FirQualifiedAccess {
-        calleeReference = calleeReference.transformSingle(transformer, data)
-        return this
-    }
-
-    override fun <D> transformExplicitReceiver(transformer: FirTransformer<D>, data: D): FirQualifiedAccess {
-        explicitReceiver = explicitReceiver?.transformSingle(transformer, data)
-        return this
     }
 }

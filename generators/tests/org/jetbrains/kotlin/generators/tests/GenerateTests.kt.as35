@@ -143,7 +143,9 @@ import org.jetbrains.kotlin.kapt3.test.AbstractClassFileToSourceStubConverterTes
 import org.jetbrains.kotlin.kapt3.test.AbstractKotlinKaptContextTest
 import org.jetbrains.kotlin.nj2k.AbstractNewJavaToKotlinConverterSingleFileTest
 import org.jetbrains.kotlin.nj2k.AbstractNewJavaToKotlinCopyPasteConversionTest
-import org.jetbrains.kotlin.nj2k.AbstractNullabilityAnalysisTest
+import org.jetbrains.kotlin.nj2k.AbstractTextNewJavaToKotlinCopyPasteConversionTest
+import org.jetbrains.kotlin.nj2k.inference.common.AbstractCommonConstraintCollectorTest
+import org.jetbrains.kotlin.nj2k.inference.nullability.AbstractNullabilityInferenceTest
 import org.jetbrains.kotlin.noarg.AbstractBlackBoxCodegenTestForNoArg
 import org.jetbrains.kotlin.noarg.AbstractBytecodeListingTestForNoArg
 import org.jetbrains.kotlin.psi.patternMatching.AbstractPsiUnifierTest
@@ -658,7 +660,7 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractQuickFixMultiModuleTest> {
-            model("multiModuleQuickFix", recursive = false, extension = null)
+             model("multiModuleQuickFix", extension = null, deep = 1)
         }
 
         testClass<AbstractKotlinGotoImplementationMultiModuleTest> {
@@ -781,9 +783,15 @@ fun main(args: Array<String>) {
         }
 
         testClass<AbstractScratchRunActionTest> {
-            model("scratch", extension = "kts", testMethod = "doCompilingTest", testClassName = "Compiling", recursive = false)
-            model("scratch", extension = "kts", testMethod = "doReplTest", testClassName = "Repl", recursive = false)
-            model("scratch/multiFile", extension = null, testMethod = "doMultiFileTest", recursive = false)
+            model("scratch", extension = "kts", testMethod = "doScratchCompilingTest", testClassName = "ScratchCompiling", recursive = false)
+            model("scratch", extension = "kts", testMethod = "doScratchReplTest", testClassName = "ScratchRepl", recursive = false)
+            model("scratch/multiFile", extension = null, testMethod = "doScratchMultiFileTest", testClassName = "ScratchMultiFile", recursive = false)
+
+            model("worksheet", extension = "ws.kts", testMethod = "doWorksheetCompilingTest", testClassName = "WorksheetCompiling", recursive = false)
+            model("worksheet", extension = "ws.kts", testMethod = "doWorksheetReplTest", testClassName = "WorksheetRepl", recursive = false)
+            model("worksheet/multiFile", extension = null, testMethod = "doWorksheetMultiFileTest", testClassName = "WorksheetMultiFile", recursive = false)
+
+            model("scratch/rightPanelOutput", extension = "kts", testMethod = "doRightPreviewPanelOutputTest", testClassName = "ScratchRightPanelOutput", recursive = false)
         }
 
         testClass<AbstractScratchLineMarkersTest> {
@@ -949,13 +957,19 @@ fun main(args: Array<String>) {
 
     testGroup("nj2k/tests", "nj2k/testData") {
         testClass<AbstractNewJavaToKotlinConverterSingleFileTest> {
-            model("newJ2k", extension = "java")
+            model("newJ2k", pattern = """^([^\.]+)\.java$""")
+        }
+        testClass<AbstractCommonConstraintCollectorTest> {
+            model("inference/common")
+        }
+        testClass<AbstractNullabilityInferenceTest> {
+            model("inference/nullability")
         }
         testClass<AbstractNewJavaToKotlinCopyPasteConversionTest> {
             model("copyPaste", pattern = """^([^\.]+)\.java$""")
         }
-        testClass<AbstractNullabilityAnalysisTest> {
-            model("nullabilityAnalysis")
+        testClass<AbstractTextNewJavaToKotlinCopyPasteConversionTest> {
+            model("copyPastePlainText", pattern = """^([^\.]+)\.txt$""")
         }
     }
 

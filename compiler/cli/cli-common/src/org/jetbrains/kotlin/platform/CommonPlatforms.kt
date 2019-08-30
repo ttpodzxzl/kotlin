@@ -25,7 +25,10 @@ object CommonPlatforms {
             defaultJsPlatform.single(),
             defaultKonanPlatform.single()
         )
-    ), org.jetbrains.kotlin.analyzer.common.CommonPlatform
+    ), org.jetbrains.kotlin.analyzer.common.CommonPlatform {
+        override val platformName: String
+            get() = "Default"
+    }
 
     val defaultCommonPlatform: TargetPlatform
         get() = CompatCommonPlatform
@@ -38,6 +41,12 @@ object CommonPlatforms {
             yieldAll(JsPlatforms.allJsPlatforms)
 
             // TODO(dsavvinov): extensions points?
+        }.toList()
+
+    val allDefaultTargetPlatforms: List<TargetPlatform>
+        get() = sequence {
+            yieldAll(allSimplePlatforms)
+            yieldAll(listOf(defaultCommonPlatform))
         }.toList()
 }
 

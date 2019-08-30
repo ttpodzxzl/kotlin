@@ -1,11 +1,11 @@
 package org.jetbrains.kotlin.j2k
 
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.extensions.AbstractExtensionPointBean
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.PsiJavaFile
 
 abstract class J2kConverterExtension : AbstractExtensionPointBean() {
@@ -30,12 +30,19 @@ abstract class J2kConverterExtension : AbstractExtensionPointBean() {
     ): WithProgressProcessor
 
     companion object {
-        private fun useNewJ2k() = Registry.`is`("kotlin.use.new.j2k", false)
+        private const val newJ2kByDefault = true
+        private const val optionName = "kotlin.use.new.j2k"
+
+        var isNewJ2k
+            get() = PropertiesComponent.getInstance().getBoolean(optionName, newJ2kByDefault)
+            set(value) {
+                PropertiesComponent.getInstance().setValue(optionName, value, newJ2kByDefault)
+            }
 
         val EP_NAME = ExtensionPointName.create<J2kConverterExtension>("org.jetbrains.kotlin.j2kConverterExtension")
 
-        val extension: J2kConverterExtension
-            get() = EP_NAME.extensions.first { it.isNewJ2k == useNewJ2k() }
+        fun extension(useNewJ2k: Boolean = isNewJ2k): J2kConverterExtension =
+            EP_NAME.extensions.first { it.isNewJ2k == useNewJ2k }
     }
 }
 

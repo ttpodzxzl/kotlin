@@ -42,7 +42,7 @@ class FunctionGenerator(declarationGenerator: DeclarationGenerator) : Declaratio
 
     constructor(context: GeneratorContext) : this(DeclarationGenerator(context))
 
-    fun generateFunctionDeclaration(ktFunction: KtNamedFunction): IrFunction =
+    fun generateFunctionDeclaration(ktFunction: KtNamedFunction): IrSimpleFunction =
         declareSimpleFunction(
             ktFunction,
             ktFunction.receiverTypeReference,
@@ -112,7 +112,7 @@ class FunctionGenerator(declarationGenerator: DeclarationGenerator) : Declaratio
         declareSimpleFunctionInner(
             descriptor,
             ktAccessor ?: ktProperty,
-            if (ktAccessor != null) IrDeclarationOrigin.DEFINED else IrDeclarationOrigin.DEFAULT_PROPERTY_ACCESSOR
+            if (ktAccessor != null && ktAccessor.hasBody()) IrDeclarationOrigin.DEFINED else IrDeclarationOrigin.DEFAULT_PROPERTY_ACCESSOR
         ).buildWithScope { irAccessor ->
             declarationGenerator.generateScopedTypeParameterDeclarations(irAccessor, descriptor.correspondingProperty.typeParameters)
             irAccessor.returnType = irAccessor.descriptor.returnType!!.toIrType()

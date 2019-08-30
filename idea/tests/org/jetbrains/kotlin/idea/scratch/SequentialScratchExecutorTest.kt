@@ -39,19 +39,19 @@ class SequentialScratchExecutorTest : AbstractScratchRunActionTest() {
     }
 
     fun doTest(expression: List<Pair<String, String>>) {
-        val scratchPanel = configureScratchByText("scratch_1.kts", testScratchText().inlinePropertiesValues(isRepl = true))
+        configureScratchByText("scratch_1.kts", testScratchText().inlinePropertiesValues(isRepl = true))
 
         myFixture.editor.caretModel.moveToOffset(myFixture.file.textLength)
 
         try {
             launchScratch()
-            waitUntilScratchFinishes()
+            waitUntilScratchFinishes(shouldStopRepl = false)
 
             for ((text, expected) in expression) {
                 typeAndCheckOutput(text, expected)
             }
         } finally {
-            scratchPanel.scratchFile.replScratchExecutor?.stop()
+            stopReplProcess()
         }
     }
 
@@ -61,7 +61,7 @@ class SequentialScratchExecutorTest : AbstractScratchRunActionTest() {
         myFixture.type(text)
 
         launchAction(RunScratchFromHereAction())
-        waitUntilScratchFinishes()
+        waitUntilScratchFinishes(shouldStopRepl = false)
 
         val inlayAfter = getInlays().filterNot { inlaysBefore.contains(it) }
 

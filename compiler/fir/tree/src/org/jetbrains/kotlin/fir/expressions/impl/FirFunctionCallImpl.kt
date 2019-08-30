@@ -14,20 +14,23 @@ import org.jetbrains.kotlin.fir.types.FirTypeProjection
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 
 class FirFunctionCallImpl(
-    session: FirSession,
     psi: PsiElement?,
     override var safe: Boolean = false
-) : FirFunctionCall(session, psi), FirModifiableQualifiedAccess<FirNamedReference> {
+) : FirFunctionCall(psi), FirModifiableQualifiedAccess<FirNamedReference> {
     override val typeArguments = mutableListOf<FirTypeProjection>()
 
     override lateinit var calleeReference: FirNamedReference
 
     override var explicitReceiver: FirExpression? = null
 
+    override var dispatchReceiver: FirExpression = FirNoReceiverExpression
+
+    override var extensionReceiver: FirExpression = FirNoReceiverExpression
+
     override fun <D> transformChildren(transformer: FirTransformer<D>, data: D): FirElement {
         typeArguments.transformInplace(transformer, data)
-        calleeReference = calleeReference.transformSingle(transformer, data)
-        explicitReceiver = explicitReceiver?.transformSingle(transformer, data)
+        super<FirModifiableQualifiedAccess>.transformChildren(transformer, data)
+
         return super<FirFunctionCall>.transformChildren(transformer, data)
     }
 

@@ -923,6 +923,11 @@ public class KotlinSteppingTestGenerated extends AbstractKotlinSteppingTest {
             runTest("idea/testData/debugger/tinyApp/src/stepping/stepOver/stopInlineCallInLocalFunInSecondaryConstructor.kt");
         }
 
+        @TestMetadata("suspendImpl.kt")
+        public void testSuspendImpl() throws Exception {
+            runTest("idea/testData/debugger/tinyApp/src/stepping/stepOver/suspendImpl.kt");
+        }
+
         @TestMetadata("whenWithoutExpression.kt")
         public void testWhenWithoutExpression() throws Exception {
             runTest("idea/testData/debugger/tinyApp/src/stepping/stepOver/whenWithoutExpression.kt");
@@ -1037,9 +1042,19 @@ public class KotlinSteppingTestGenerated extends AbstractKotlinSteppingTest {
             runTest("idea/testData/debugger/tinyApp/src/stepping/custom/anonymousFunAsParamDefaultValue.kt");
         }
 
+        @TestMetadata("constantConditions.kt")
+        public void testConstantConditions() throws Exception {
+            runTest("idea/testData/debugger/tinyApp/src/stepping/custom/constantConditions.kt");
+        }
+
         @TestMetadata("coroutine.kt")
         public void testCoroutine() throws Exception {
             runTest("idea/testData/debugger/tinyApp/src/stepping/custom/coroutine.kt");
+        }
+
+        @TestMetadata("coroutineUnitElimination.kt")
+        public void testCoroutineUnitElimination() throws Exception {
+            runTest("idea/testData/debugger/tinyApp/src/stepping/custom/coroutineUnitElimination.kt");
         }
 
         @TestMetadata("crossinlineLiteral.kt")
@@ -1055,6 +1070,11 @@ public class KotlinSteppingTestGenerated extends AbstractKotlinSteppingTest {
         @TestMetadata("funLiteral.kt")
         public void testFunLiteral() throws Exception {
             runTest("idea/testData/debugger/tinyApp/src/stepping/custom/funLiteral.kt");
+        }
+
+        @TestMetadata("functionBreakpoints.kt")
+        public void testFunctionBreakpoints() throws Exception {
+            runTest("idea/testData/debugger/tinyApp/src/stepping/custom/functionBreakpoints.kt");
         }
 
         @TestMetadata("functionCallStoredToVariable.kt")

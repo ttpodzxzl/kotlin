@@ -26,7 +26,6 @@ import com.intellij.core.JavaCoreApplicationEnvironment
 import com.intellij.core.JavaCoreProjectEnvironment
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.lang.MetaLanguage
-import com.intellij.lang.injection.InjectedLanguageManager
 import com.intellij.lang.java.JavaParserDefinition
 import com.intellij.mock.MockProject
 import com.intellij.openapi.Disposable
@@ -159,7 +158,6 @@ class KotlinCoreEnvironment private constructor(
 
                 registerService(ExternalAnnotationsManager::class.java, MockExternalAnnotationsManager())
                 registerService(InferredAnnotationsManager::class.java, MockInferredAnnotationsManager())
-                registerService(InjectedLanguageManager::class.java, MockInjectedLanguageManager())
             }
 
             super.registerJavaPsiFacade()
@@ -293,6 +291,11 @@ class KotlinCoreEnvironment private constructor(
             unprocessedSources = allNewSources.filterNot { processedSources.contains(it) }.distinct()
             sourceFiles += unprocessedSources
         }
+    }
+
+    fun addKotlinSourceRoots(rootDirs: List<File>) {
+        val roots = rootDirs.map { KotlinSourceRoot(it.absolutePath, isCommon = false) }
+        sourceFiles += createSourceFilesFromSourceRoots(configuration, project, roots)
     }
 
     fun createPackagePartProvider(scope: GlobalSearchScope): JvmPackagePartProvider {

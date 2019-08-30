@@ -5,11 +5,11 @@
 
 package org.jetbrains.kotlin.backend.jvm.codegen
 
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns.FQ_NAMES
+import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
+import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
 import org.jetbrains.kotlin.codegen.AsmUtil
 import org.jetbrains.kotlin.codegen.ClassBuilderMode
 import org.jetbrains.kotlin.codegen.OwnerKind
-import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.codegen.visitAnnotableParameterCount
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.declarations.*
@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtElement
-import org.jetbrains.kotlin.resolve.jvm.AsmTypes
 import org.jetbrains.kotlin.resolve.jvm.annotations.JVM_SYNTHETIC_ANNOTATION_FQ_NAME
 import org.jetbrains.kotlin.resolve.jvm.annotations.STRICTFP_ANNOTATION_FQ_NAME
 import org.jetbrains.kotlin.resolve.jvm.annotations.SYNCHRONIZED_ANNOTATION_FQ_NAME
@@ -34,45 +33,59 @@ open class FunctionCodegen(
     private val classCodegen: ClassCodegen,
     private val isInlineLambda: Boolean = false
 ) {
-
+    val context = classCodegen.context
     val state = classCodegen.state
 
     fun generate(): JvmMethodGenericSignature =
         try {
             doGenerate()
         } catch (e: Throwable) {
-            throw RuntimeException("${e.message} while generating code for:\n${irFunction.dump()}", e)
+            throw RuntimeException("Exception while generating code for:\n${irFunction.dump()}", e)
         }
 
     private fun doGenerate(): JvmMethodGenericSignature {
-        val signature = classCodegen.typeMapper.mapSignatureWithGeneric(irFunction, OwnerKind.IMPLEMENTATION)
+        val signature = classCodegen.methodSignatureMapper.mapSignatureWithGeneric(irFunction, OwnerKind.IMPLEMENTATION)
 
         val flags = calculateMethodFlags(irFunction.isStatic)
         var methodVisitor = createMethod(flags, signature)
 
-        generateParameterNames(irFunction, methodVisitor, signature, state, flags.and(Opcodes.ACC_SYNTHETIC) != 0)
+        val hasSyntheticFlag = flags.and(Opcodes.ACC_SYNTHETIC) != 0
+        if (state.generateParametersMetadata && !hasSyntheticFlag) {
+            generateParameterNames(irFunction, methodVisitor, signature, state)
+        }
 
         if (irFunction.origin != IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER) {
-            AnnotationCodegen(classCodegen, state, methodVisitor::visitAnnotation).genAnnotations(
+            AnnotationCodegen(classCodegen, context, methodVisitor::visitAnnotation).genAnnotations(
                 irFunction,
                 signature.asmMethod.returnType
             )
-            generateParameterAnnotations(irFunction, methodVisitor, signature, classCodegen, state)
+        }
+
+        // FIXME: The following test is a workaround for a bug in anonymous object regeneration.
+        //        We currently need to avoid parameter annotations on the (synthetic) constructors of inlined anonymous objects,
+        //        since otherwise anonymous object regeneration can fail with an ArrayIndexOutOfBounds exception if the number
+        //        or arguments to the constructor changes.
+        if (!hasSyntheticFlag ||
+            irFunction.origin == JvmLoweredDeclarationOrigin.SYNTHETIC_METHOD_FOR_PROPERTY_ANNOTATIONS ||
+            //TODO: investigate this case: annotation here is generated twice in lowered function and in interface method overload
+            irFunction.origin == JvmLoweredDeclarationOrigin.GENERATED_SAM_IMPLEMENTATION
+        ) {
+            generateParameterAnnotations(irFunction, methodVisitor, signature, classCodegen, context)
         }
 
         if (!state.classBuilderMode.generateBodies || flags.and(Opcodes.ACC_ABSTRACT) != 0 || irFunction.isExternal) {
             generateAnnotationDefaultValueIfNeeded(methodVisitor)
         } else {
             val frameMap = createFrameMapWithReceivers(signature)
-            val irClass = classCodegen.context.suspendFunctionContinuations[irFunction]
+            val irClass = context.suspendFunctionContinuations[irFunction]
             val element = (irFunction.symbol.descriptor.psiElement
-                ?: classCodegen.context.suspendLambdaToOriginalFunctionMap[irFunction.parent]?.symbol?.descriptor?.psiElement) as? KtElement
-            val continuationClassBuilder = classCodegen.context.continuationClassBuilders[irClass]
+                ?: context.suspendLambdaToOriginalFunctionMap[irFunction.parent]?.symbol?.descriptor?.psiElement) as? KtElement
+            val continuationClassBuilder = context.continuationClassBuilders[irClass]
             methodVisitor = when {
                 irFunction.isSuspend -> generateStateMachineForNamedFunction(
                     irFunction, classCodegen, methodVisitor, flags, signature, continuationClassBuilder, element!!
                 )
-                irFunction.isInvokeSuspendOfLambda(classCodegen.context) -> generateStateMachineForLambda(
+                irFunction.isInvokeSuspendOfLambda(context) -> generateStateMachineForLambda(
                     classCodegen, methodVisitor, flags, signature, element!!
                 )
                 else -> methodVisitor
@@ -96,7 +109,7 @@ open class FunctionCodegen(
         val visibility = AsmUtil.getVisibilityAccessFlag(irFunction.visibility) ?: error("Unmapped visibility ${irFunction.visibility}")
         val staticFlag = if (isStatic) Opcodes.ACC_STATIC else 0
         val varargFlag = if (irFunction.valueParameters.any { it.varargElementType != null }) Opcodes.ACC_VARARGS else 0
-        val deprecation = if (irFunction.hasAnnotation(FQ_NAMES.deprecated)) Opcodes.ACC_DEPRECATED else 0
+        val deprecation = irFunction.deprecationFlags
         val bridgeFlag = if (
             irFunction.origin == IrDeclarationOrigin.BRIDGE ||
             irFunction.origin == IrDeclarationOrigin.BRIDGE_SPECIAL
@@ -137,14 +150,14 @@ open class FunctionCodegen(
             irFunction.OtherOrigin,
             flags,
             signature.asmMethod.name, signature.asmMethod.descriptor,
-            if (irFunction.origin == IrDeclarationOrigin.BRIDGE) null else signature.genericsSignature,
+            if (flags.and(Opcodes.ACC_SYNTHETIC) != 0) null else signature.genericsSignature,
             exceptions
         )
     }
 
     private fun generateAnnotationDefaultValueIfNeeded(methodVisitor: MethodVisitor) {
         getAnnotationDefaultValueExpression()?.let { defaultValueExpression ->
-            val annotationCodegen = AnnotationCodegen(classCodegen, state) { _, _ -> methodVisitor.visitAnnotationDefault() }
+            val annotationCodegen = AnnotationCodegen(classCodegen, context) { _, _ -> methodVisitor.visitAnnotationDefault() }
             annotationCodegen.generateAnnotationDefaultValue(defaultValueExpression)
         }
     }
@@ -203,7 +216,7 @@ fun generateParameterAnnotations(
     mv: MethodVisitor,
     jvmSignature: JvmMethodSignature,
     innerClassConsumer: InnerClassConsumer,
-    state: GenerationState
+    context: JvmBackendContext
 ) {
     val iterator = irFunction.valueParameters.iterator()
     val kotlinParameterTypes = jvmSignature.valueParameters
@@ -212,7 +225,7 @@ fun generateParameterAnnotations(
         val kind = parameterSignature.kind
         if (kind.isSkippedInGenericSignature) {
             if (AsmUtil.IS_BUILT_WITH_ASM6) {
-                markEnumOrInnerConstructorParameterAsSynthetic(mv, i, state.classBuilderMode)
+                markEnumOrInnerConstructorParameterAsSynthetic(mv, i, ClassBuilderMode.FULL)
             } else {
                 syntheticParameterCount++
             }
@@ -233,18 +246,13 @@ fun generateParameterAnnotations(
         }
 
         if (annotated != null) {
-
-            AnnotationCodegen(
-                innerClassConsumer,
-                state
-            ) { descriptor, visible ->
+            AnnotationCodegen(innerClassConsumer, context) { descriptor, visible ->
                 mv.visitParameterAnnotation(
                     if (AsmUtil.IS_BUILT_WITH_ASM6) i else i - syntheticParameterCount,
                     descriptor,
                     visible
                 )
-            }
-                .genAnnotations(annotated, parameterSignature.asmType)
+            }.genAnnotations(annotated, parameterSignature.asmType)
         }
     }
 }
