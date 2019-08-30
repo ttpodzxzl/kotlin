@@ -16,6 +16,8 @@
 
 package org.jetbrains.kotlin.resolve.calls.components
 
+import org.jetbrains.kotlin.config.LanguageFeature
+import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
@@ -23,7 +25,12 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.calls.model.*
 import java.util.*
 
-class ArgumentsToParametersMapper {
+class ArgumentsToParametersMapper(
+    languageVersionSettings: LanguageVersionSettings
+) {
+
+    private val allowMixedNamedAndPositionArguments =
+        languageVersionSettings.supportsFeature(LanguageFeature.AllowMixedNamedArgumentWithPosition)
 
     data class ArgumentMapping(
         // This map should be ordered by arguments as written, e.g.:
@@ -48,7 +55,7 @@ class ArgumentsToParametersMapper {
         if (argumentsInParenthesis.isEmpty() && externalArgument == null && descriptor.valueParameters.isEmpty()) {
             return EmptyArgumentMapping
         } else {
-            val processor = CallArgumentProcessor(descriptor)
+            val processor = CallArgumentProcessor(descriptor, allowMixedNamedAndPositionArguments)
             processor.processArgumentsInParenthesis(argumentsInParenthesis)
 
             if (externalArgument != null) {
@@ -60,7 +67,10 @@ class ArgumentsToParametersMapper {
         }
     }
 
-    private class CallArgumentProcessor(val descriptor: CallableDescriptor) {
+    private class CallArgumentProcessor(
+        val descriptor: CallableDescriptor,
+        val allowMixedNamedAndPositionArguments: Boolean
+    ) {
         val result: MutableMap<ValueParameterDescriptor, ResolvedCallArgument> = LinkedHashMap()
         private var state = State.POSITION_ARGUMENTS
 
@@ -105,6 +115,7 @@ class ArgumentsToParametersMapper {
             assert(state == State.VARARG_POSITION) { "Incorrect state: $state" }
             val parameter = parameters[currentParameterIndex]
             result.put(parameter.original, ResolvedCallArgument.VarargArgument(varargArguments!!))
+            currentParameterIndex++
         }
 
         // return true, if it was mapped to vararg parameter
@@ -148,6 +159,11 @@ class ArgumentsToParametersMapper {
             }
 
             result[parameter.original] = ResolvedCallArgument.SimpleArgument(argument)
+
+            if (allowMixedNamedAndPositionArguments && parameter.original == parameters.getOrNull(currentParameterIndex)?.original) {
+                state = State.POSITION_ARGUMENTS
+                currentParameterIndex++
+            }
         }
 
         private fun ValueParameterDescriptor.getOverriddenParameterWithOtherName() = overriddenDescriptors.firstOrNull {
