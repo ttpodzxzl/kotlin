@@ -37,13 +37,12 @@ open class DukatCompareTest : AbstractDiagnosticMessageJsTest() {
     private val newDataPath = "libraries/stdlib/js/src/org.w3c"
 
     private fun generatePackageDescriptor(filePath: String, fileName: String): PackageViewDescriptor {
-        val psiFile = KotlinTestUtils.createFile(filePath, KotlinTestUtils.doLoadFile(filePath, fileName), project)
+        val psiFile = KotlinTestUtils.createFile(fileName, KotlinTestUtils.doLoadFile(filePath, fileName), project)
         val moduleDescriptor = analyze(psiFile, null, mapOf()).moduleDescriptor
         return moduleDescriptor.getPackage(psiFile.packageFqName)
     }
 
-    fun test() {
-        val fileName = "org.khronos.webgl.kt"
+    override fun doTest(fileName: String) {
         RecursiveDescriptorComparator.compareDescriptors(
             generatePackageDescriptor(oldDataPath, fileName),
             generatePackageDescriptor(newDataPath, fileName),
@@ -52,8 +51,72 @@ open class DukatCompareTest : AbstractDiagnosticMessageJsTest() {
         )
     }
 
-}
+    fun testWebgl() {
+        doTest("org.khronos.webgl.kt")
+    }
 
-private fun allFilesUnder(directory: String): List<File> {
-    return FileUtil.findFilesByMask(Pattern.compile(".*\\.kt"), File(directory))
+    fun testMasking() {
+        doTest("org.w3c.css.masking.kt")
+    }
+
+    fun testClipboard() {
+        doTest("org.w3c.dom.clipboard.kt")
+    }
+
+    fun testCSS() {
+        doTest("org.w3c.dom.css.kt")
+    }
+
+    fun testEvents() {
+        doTest("org.w3c.dom.events.kt")
+    }
+
+    fun testDOM() {
+        doTest("org.w3c.dom.kt")
+    }
+
+    fun testMediacapture() {
+        doTest("org.w3c.dom.mediacapture.kt")
+    }
+
+    fun testParsing() {
+        doTest("org.w3c.dom.parsing.kt")
+    }
+
+    fun testPointerEvents() {
+        doTest("org.w3c.dom.pointerevents.kt")
+    }
+
+    fun testSVG() {
+        doTest("org.w3c.dom.svg.kt")
+    }
+
+    fun testURL() {
+        doTest("org.w3c.dom.url.kt")
+    }
+
+    fun testFetch() {
+        doTest("org.w3c.fetch.kt")
+    }
+
+    fun testFiles() {
+        doTest("org.w3c.files.kt")
+    }
+
+    fun testNotifications() {
+        doTest("org.w3c.notifications.kt")
+    }
+
+    fun testPerformance() {
+        doTest("org.w3c.performance.kt")
+    }
+
+    fun testWorkers() {
+        doTest("org.w3c.workers.kt")
+    }
+
+    fun testXHR() {
+        doTest("org.w3c.xhr.kt")
+    }
+
 }
