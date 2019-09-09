@@ -12,7 +12,6 @@ import org.jetbrains.kotlin.test.KotlinTestUtils
 import org.jetbrains.kotlin.test.util.RecursiveDescriptorComparator
 import org.jetbrains.kotlin.test.util.RecursiveDescriptorComparator.RECURSIVE_ALL
 import java.io.File
-import java.io.FileNotFoundException
 import java.io.PrintWriter
 
 open class DukatCompareTest : AbstractDiagnosticMessageJsTest() {
@@ -24,24 +23,19 @@ open class DukatCompareTest : AbstractDiagnosticMessageJsTest() {
     private val newOutputPath = "libraries/tools/dukat/src/test/output/new"
 
 
-    fun compareDescriptorsAndOutputResult(
+    private fun compareDescriptorsAndOutputResult(
         expected: DeclarationDescriptor,
         actual: DeclarationDescriptor,
-        configuration: RecursiveDescriptorComparator.Configuration,
         expectedFile: File,
         actualFile: File
     ) {
-        val comparator = RecursiveDescriptorComparator(configuration)
+        val comparator = RecursiveDescriptorComparator(RECURSIVE_ALL)
 
         val actualSerialized = comparator.serializeRecursively(actual)
         PrintWriter(actualFile).use { actualWriter -> actualWriter.println(actualSerialized) }
 
         val expectedSerialized = comparator.serializeRecursively(expected)
-        try {
-            PrintWriter(expectedFile).use { expectedWriter -> expectedWriter.println(expectedSerialized) }
-        } catch (e: FileNotFoundException) {
-            e.printStackTrace()
-        }
+        PrintWriter(expectedFile).use { expectedWriter -> expectedWriter.println(expectedSerialized) }
 
     }
 
@@ -56,7 +50,6 @@ open class DukatCompareTest : AbstractDiagnosticMessageJsTest() {
         compareDescriptorsAndOutputResult(
             generatePackageDescriptor(oldDataPath, fileName),
             generatePackageDescriptor(newDataPath, fileName),
-            RECURSIVE_ALL,
             File("$oldOutputPath/$fileName"),
             File("$newOutputPath/$fileName")
         )
