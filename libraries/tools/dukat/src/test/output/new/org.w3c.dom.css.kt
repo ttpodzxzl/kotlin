@@ -334,8 +334,9 @@ public abstract external class CSSRule {
 
 public abstract external class CSSRuleList : org.w3c.dom.ItemArrayLike<org.w3c.dom.css.CSSRule> {
     /*primary*/ public constructor CSSRuleList()
-    public open override /*1*/ val length: kotlin.Int
-        public open override /*1*/ fun <get-length>(): kotlin.Int
+    // we can omit explicit override here
+    public abstract override /*1*/ /*fake_override*/ val length: kotlin.Int
+        public abstract override /*1*/ /*fake_override*/ fun <get-length>(): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public open override /*1*/ fun item(/*0*/ index: kotlin.Int): org.w3c.dom.css.CSSRule?
@@ -713,8 +714,9 @@ public abstract external class CSSStyleDeclaration : org.w3c.dom.ItemArrayLike<k
     public open var left: kotlin.String
         public open fun <get-left>(): kotlin.String
         public open fun <set-left>(/*0*/ <set-?>: kotlin.String): kotlin.Unit
-    public open override /*1*/ val length: kotlin.Int
-        public open override /*1*/ fun <get-length>(): kotlin.Int
+    // we can omit explicit override here
+    public abstract override /*1*/ /*fake_override*/ val length: kotlin.Int
+        public abstract override /*1*/ /*fake_override*/ fun <get-length>(): kotlin.Int
     public open var letterSpacing: kotlin.String
         public open fun <get-letterSpacing>(): kotlin.String
         public open fun <set-letterSpacing>(/*0*/ <set-?>: kotlin.String): kotlin.Unit
@@ -1136,8 +1138,9 @@ public external interface LinkStyle {
 
 public abstract external class MediaList : org.w3c.dom.ItemArrayLike<kotlin.String> {
     /*primary*/ public constructor MediaList()
-    public open override /*1*/ val length: kotlin.Int
-        public open override /*1*/ fun <get-length>(): kotlin.Int
+    // we can omit explicit override here
+    public abstract override /*1*/ /*fake_override*/ val length: kotlin.Int
+        public abstract override /*1*/ /*fake_override*/ fun <get-length>(): kotlin.Int
     public open var mediaText: kotlin.String
         public open fun <get-mediaText>(): kotlin.String
         public open fun <set-mediaText>(/*0*/ <set-?>: kotlin.String): kotlin.Unit
@@ -1173,8 +1176,9 @@ public abstract external class StyleSheet {
 
 public abstract external class StyleSheetList : org.w3c.dom.ItemArrayLike<org.w3c.dom.css.StyleSheet> {
     /*primary*/ public constructor StyleSheetList()
-    public open override /*1*/ val length: kotlin.Int
-        public open override /*1*/ fun <get-length>(): kotlin.Int
+    // we can omit explicit override here
+    public abstract override /*1*/ /*fake_override*/ val length: kotlin.Int
+        public abstract override /*1*/ /*fake_override*/ fun <get-length>(): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public open override /*1*/ fun item(/*0*/ index: kotlin.Int): org.w3c.dom.css.StyleSheet?

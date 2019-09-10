@@ -52,8 +52,9 @@ public open external class File : org.w3c.files.Blob {
 
 public abstract external class FileList : org.w3c.dom.ItemArrayLike<org.w3c.files.File> {
     /*primary*/ public constructor FileList()
-    public open override /*1*/ val length: kotlin.Int
-        public open override /*1*/ fun <get-length>(): kotlin.Int
+    // we can omit explicit override here
+    public abstract override /*1*/ /*fake_override*/ val length: kotlin.Int
+        public abstract override /*1*/ /*fake_override*/ fun <get-length>(): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public open override /*1*/ fun item(/*0*/ index: kotlin.Int): org.w3c.files.File?

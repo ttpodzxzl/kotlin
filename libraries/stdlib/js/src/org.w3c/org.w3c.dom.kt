@@ -3153,7 +3153,6 @@ external abstract class Window : EventTarget, GlobalEventHandlers, WindowEventHa
     open val outerWidth: Int
     open val outerHeight: Int
     open val devicePixelRatio: Double
-    override val performance: Performance
     fun close()
     fun stop()
     fun focus()
@@ -3810,7 +3809,6 @@ external interface NavigatorPlugins {
  * Exposes the JavaScript [PluginArray](https://developer.mozilla.org/en/docs/Web/API/PluginArray) to Kotlin
  */
 external abstract class PluginArray : ItemArrayLike<Plugin> {
-    override val length: Int
     fun refresh(reload: Boolean = definedExternally)
     override fun item(index: Int): Plugin?
     fun namedItem(name: String): Plugin?
@@ -3826,7 +3824,6 @@ inline operator fun PluginArray.get(name: String): Plugin? = asDynamic()[name]
  * Exposes the JavaScript [MimeTypeArray](https://developer.mozilla.org/en/docs/Web/API/MimeTypeArray) to Kotlin
  */
 external abstract class MimeTypeArray : ItemArrayLike<MimeType> {
-    override val length: Int
     override fun item(index: Int): MimeType?
     fun namedItem(name: String): MimeType?
 }
@@ -3844,7 +3841,6 @@ external abstract class Plugin : ItemArrayLike<MimeType> {
     open val name: String
     open val description: String
     open val filename: String
-    override val length: Int
     override fun item(index: Int): MimeType?
     fun namedItem(name: String): MimeType?
 }
@@ -4620,7 +4616,6 @@ external interface Slotable {
  * Exposes the JavaScript [NodeList](https://developer.mozilla.org/en/docs/Web/API/NodeList) to Kotlin
  */
 external abstract class NodeList : ItemArrayLike<Node> {
-    override val length: Int
     override fun item(index: Int): Node?
 }
 
@@ -4631,7 +4626,6 @@ inline operator fun NodeList.get(index: Int): Node? = asDynamic()[index]
  * Exposes the JavaScript [HTMLCollection](https://developer.mozilla.org/en/docs/Web/API/HTMLCollection) to Kotlin
  */
 external abstract class HTMLCollection : ItemArrayLike<Element>, UnionElementOrHTMLCollection {
-    override val length: Int
     override fun item(index: Int): Element?
     fun namedItem(name: String): Element?
 }
@@ -4950,10 +4944,10 @@ external open class Document : Node, GlobalEventHandlers, DocumentAndElementEven
     override fun append(vararg nodes: dynamic)
     override fun querySelector(selectors: String): Element?
     override fun querySelectorAll(selectors: String): NodeList
-    override fun getBoxQuads(options: BoxQuadOptions): Array<DOMQuad>
-    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions): DOMPoint
+    override fun getBoxQuads(options: BoxQuadOptions /* = definedExternally */): Array<DOMQuad>
+    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMPoint
 
     companion object {
         val ELEMENT_NODE: Short
@@ -5101,6 +5095,7 @@ external open class DocumentFragment : Node, NonElementParentNode, ParentNode {
 external open class ShadowRoot : DocumentFragment, DocumentOrShadowRoot {
     open val mode: ShadowRootMode
     open val host: Element
+    override val fullscreenElement: Element?
 
     companion object {
         val ELEMENT_NODE: Short
@@ -5227,7 +5222,6 @@ inline fun ShadowRootInit(mode: ShadowRootMode?): ShadowRootInit {
  * Exposes the JavaScript [NamedNodeMap](https://developer.mozilla.org/en/docs/Web/API/NamedNodeMap) to Kotlin
  */
 external abstract class NamedNodeMap : ItemArrayLike<Attr> {
-    override val length: Int
     fun getNamedItemNS(namespace: String?, localName: String): Attr?
     fun setNamedItem(attr: Attr): Attr?
     fun setNamedItemNS(attr: Attr): Attr?
@@ -5320,10 +5314,10 @@ external open class Text(data: String = definedExternally) : CharacterData, Slot
     override val previousElementSibling: Element?
     override val nextElementSibling: Element?
     fun splitText(offset: Int): Text
-    override fun getBoxQuads(options: BoxQuadOptions): Array<DOMQuad>
-    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions): DOMPoint
+    override fun getBoxQuads(options: BoxQuadOptions /* = definedExternally */): Array<DOMQuad>
+    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMPoint
     override fun before(vararg nodes: dynamic)
     override fun after(vararg nodes: dynamic)
     override fun replaceWith(vararg nodes: dynamic)
@@ -5542,7 +5536,6 @@ external interface NodeFilter {
  * Exposes the JavaScript [DOMTokenList](https://developer.mozilla.org/en/docs/Web/API/DOMTokenList) to Kotlin
  */
 external abstract class DOMTokenList : ItemArrayLike<String> {
-    override val length: Int
     open var value: String
     fun contains(token: String): Boolean
     fun add(vararg tokens: String)
@@ -5571,7 +5564,7 @@ external open class DOMPointReadOnly(x: Double, y: Double, z: Double, w: Double)
  * Exposes the JavaScript [DOMPoint](https://developer.mozilla.org/en/docs/Web/API/DOMPoint) to Kotlin
  */
 external open class DOMPoint : DOMPointReadOnly {
-    constructor(point: DOMPointInit = definedExternally)
+    constructor(point: DOMPointInit)
     constructor(x: Double = definedExternally, y: Double = definedExternally, z: Double = definedExternally, w: Double = definedExternally)
     override var x: Double
     override var y: Double
@@ -5668,7 +5661,7 @@ inline operator fun DOMRectList.get(index: Int): DOMRect? = asDynamic()[index]
  */
 external open class DOMQuad {
     constructor(p1: DOMPointInit = definedExternally, p2: DOMPointInit = definedExternally, p3: DOMPointInit = definedExternally, p4: DOMPointInit = definedExternally)
-    constructor(rect: DOMRectInit = definedExternally)
+    constructor(rect: DOMRectInit)
     open val p1: DOMPoint
     open val p2: DOMPoint
     open val p3: DOMPoint
@@ -6029,10 +6022,10 @@ external open class Image(width: Int = definedExternally, height: Int = definedE
     override fun after(vararg nodes: dynamic)
     override fun replaceWith(vararg nodes: dynamic)
     override fun remove()
-    override fun getBoxQuads(options: BoxQuadOptions): Array<DOMQuad>
-    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions): DOMPoint
+    override fun getBoxQuads(options: BoxQuadOptions /* = definedExternally */): Array<DOMQuad>
+    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMPoint
 
     companion object {
         val ELEMENT_NODE: Short
@@ -6149,10 +6142,10 @@ external open class Audio(src: String = definedExternally) : HTMLAudioElement {
     override fun after(vararg nodes: dynamic)
     override fun replaceWith(vararg nodes: dynamic)
     override fun remove()
-    override fun getBoxQuads(options: BoxQuadOptions): Array<DOMQuad>
-    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions): DOMPoint
+    override fun getBoxQuads(options: BoxQuadOptions /* = definedExternally */): Array<DOMQuad>
+    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMPoint
 
     companion object {
         val NETWORK_EMPTY: Short
@@ -6281,10 +6274,10 @@ external open class Option(text: String = definedExternally, value: String = def
     override fun after(vararg nodes: dynamic)
     override fun replaceWith(vararg nodes: dynamic)
     override fun remove()
-    override fun getBoxQuads(options: BoxQuadOptions): Array<DOMQuad>
-    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions): DOMQuad
-    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions): DOMPoint
+    override fun getBoxQuads(options: BoxQuadOptions /* = definedExternally */): Array<DOMQuad>
+    override fun convertQuadFromNode(quad: dynamic, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertRectFromNode(rect: DOMRectReadOnly, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMQuad
+    override fun convertPointFromNode(point: DOMPointInit, from: dynamic, options: ConvertCoordinateOptions /* = definedExternally */): DOMPoint
 
     companion object {
         val ELEMENT_NODE: Short
