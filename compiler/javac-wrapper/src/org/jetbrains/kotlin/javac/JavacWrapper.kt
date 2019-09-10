@@ -37,13 +37,12 @@ import com.sun.tools.javac.util.Context
 import com.sun.tools.javac.util.Log
 import com.sun.tools.javac.util.Names
 import com.sun.tools.javac.util.Options
+import org.jetbrains.kotlin.cli.jvm.compiler.JvmPackagePartProvider
 import org.jetbrains.kotlin.javac.resolve.ClassifierResolver
 import org.jetbrains.kotlin.javac.resolve.IdentifierResolver
 import org.jetbrains.kotlin.javac.resolve.KotlinClassifiersCache
 import org.jetbrains.kotlin.javac.resolve.classId
-import org.jetbrains.kotlin.javac.wrappers.symbols.SymbolBasedClass
-import org.jetbrains.kotlin.javac.wrappers.symbols.SymbolBasedClassifierType
-import org.jetbrains.kotlin.javac.wrappers.symbols.SymbolBasedPackage
+import org.jetbrains.kotlin.javac.wrappers.symbols.*
 import org.jetbrains.kotlin.javac.wrappers.trees.*
 import org.jetbrains.kotlin.load.java.structure.*
 import org.jetbrains.kotlin.name.*
@@ -65,6 +64,7 @@ class JavacWrapper(
     bootClasspath: List<File>?,
     sourcePath: List<File>?,
     val kotlinResolver: JavacWrapperKotlinResolver,
+    private val packagePartsProviders: List<JvmPackagePartProvider>,
     private val compileJava: Boolean,
     private val outputDirectory: File?,
     private val context: Context
@@ -229,7 +229,7 @@ class JavacWrapper(
     fun findSubPackages(fqName: FqName): List<JavaPackage> =
         symbols.packages
             .filterKeys { it.toString().startsWith("$fqName.") }
-            .map { SymbolBasedPackage(it.value, this) } +
+            .map { SimpleSymbolBasedPackage(it.value, this) } +
                 javaPackages
                     .filterKeys { it.isSubpackageOf(fqName) && it != fqName }
                     .map { it.value }
@@ -301,12 +301,30 @@ class JavacWrapper(
     private fun findPackageInSymbols(fqName: String): SymbolBasedPackage? {
         if (symbolBasedPackagesCache.containsKey(fqName)) return symbolBasedPackagesCache[fqName]
 
-        elements.getPackageElement(fqName)?.let { symbol ->
-            SymbolBasedPackage(symbol, this)
-        }.let { symbolBasedPackage ->
+        fun findSimplePackageInSymbols(fqName: String): SimpleSymbolBasedPackage? {
+            elements.getPackageElement(fqName)?.let { symbol ->
+                SimpleSymbolBasedPackage(symbol, this)
+            }.let { symbolBasedPackage ->
+                symbolBasedPackagesCache[fqName] = symbolBasedPackage
+                return symbolBasedPackage
+            }
+        }
+
+        val mappedPackages = mutableListOf<SimpleSymbolBasedPackage>()
+        for (provider in packagePartsProviders) {
+            val packagePartFqNames = provider.findPackageParts(fqName)
+                .map { it.substringBeforeLast("/").replace('/', '.') }.filter { it != fqName }.distinct()
+            mappedPackages += packagePartFqNames.mapNotNull { packagePartFqName ->
+                findSimplePackageInSymbols(packagePartFqName)
+            }
+        }
+        if (mappedPackages.isNotEmpty()) {
+            val symbolBasedPackage = MappedSymbolBasedPackage(FqName(fqName), mappedPackages, this)
             symbolBasedPackagesCache[fqName] = symbolBasedPackage
             return symbolBasedPackage
         }
+
+        return findSimplePackageInSymbols(fqName)
     }
 
     private fun JavacFileManager.setClassPathForCompilation(outDir: File?) = apply {
