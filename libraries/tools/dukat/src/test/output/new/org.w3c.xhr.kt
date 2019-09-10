@@ -12,6 +12,7 @@ public val org.w3c.xhr.XMLHttpRequestResponseType.Companion.JSON: org.w3c.xhr.XM
     public inline fun org.w3c.xhr.XMLHttpRequestResponseType.Companion.<get-JSON>(): org.w3c.xhr.XMLHttpRequestResponseType
 public val org.w3c.xhr.XMLHttpRequestResponseType.Companion.TEXT: org.w3c.xhr.XMLHttpRequestResponseType
     public inline fun org.w3c.xhr.XMLHttpRequestResponseType.Companion.<get-TEXT>(): org.w3c.xhr.XMLHttpRequestResponseType
+// "unsigned long long" should be converted to Number to allow to cast it to ULong [7]
 @kotlin.internal.InlineOnly public inline fun ProgressEventInit(/*0*/ lengthComputable: kotlin.Boolean? = ..., /*1*/ loaded: kotlin.Number? = ..., /*2*/ total: kotlin.Number? = ..., /*3*/ bubbles: kotlin.Boolean? = ..., /*4*/ cancelable: kotlin.Boolean? = ..., /*5*/ composed: kotlin.Boolean? = ...): org.w3c.xhr.ProgressEventInit
 
 public open external class FormData {
@@ -47,12 +48,14 @@ public open external class ProgressEvent : org.w3c.dom.events.Event {
         public open override /*1*/ /*fake_override*/ fun <get-isTrusted>(): kotlin.Boolean
     public open val lengthComputable: kotlin.Boolean
         public open fun <get-lengthComputable>(): kotlin.Boolean
+    // "unsigned long long" should be converted to Number to allow to cast it to ULong [7]
     public open val loaded: kotlin.Number
         public open fun <get-loaded>(): kotlin.Number
     public open override /*1*/ /*fake_override*/ val target: org.w3c.dom.events.EventTarget?
         public open override /*1*/ /*fake_override*/ fun <get-target>(): org.w3c.dom.events.EventTarget?
     public open override /*1*/ /*fake_override*/ val timeStamp: kotlin.Number
         public open override /*1*/ /*fake_override*/ fun <get-timeStamp>(): kotlin.Number
+    // "unsigned long long" should be converted to Number to allow to cast it to ULong [7]
     public open val total: kotlin.Number
         public open fun <get-total>(): kotlin.Number
     public open override /*1*/ /*fake_override*/ val type: kotlin.String
@@ -66,6 +69,7 @@ public open external class ProgressEvent : org.w3c.dom.events.Event {
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -95,6 +99,7 @@ public external interface ProgressEventInit : org.w3c.dom.EventInit {
     public open var lengthComputable: kotlin.Boolean?
         public open fun <get-lengthComputable>(): kotlin.Boolean?
         public open fun <set-lengthComputable>(/*0*/ value: kotlin.Boolean?): kotlin.Unit
+    // "unsigned long long" should be converted to Number to allow to cast it to ULong [7]
     public open var loaded: kotlin.Number?
         public open fun <get-loaded>(): kotlin.Number?
         public open fun <set-loaded>(/*0*/ value: kotlin.Number?): kotlin.Unit
@@ -225,6 +230,7 @@ public abstract external class XMLHttpRequestEventTarget : org.w3c.dom.events.Ev
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface XMLHttpRequestResponseType {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int

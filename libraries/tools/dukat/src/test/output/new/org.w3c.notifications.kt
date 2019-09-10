@@ -82,8 +82,10 @@ public open external class Notification : org.w3c.dom.events.EventTarget {
 
     public companion object Companion {
         /*primary*/ private constructor Companion()
+        // this property should be read-only, but because of a parser bug it was var [2]
         public final val maxActions: kotlin.Int
             public final fun <get-maxActions>(): kotlin.Int
+        // this property should be read-only, but because of a parser bug it was var [2]
         public final val permission: org.w3c.notifications.NotificationPermission
             public final fun <get-permission>(): org.w3c.notifications.NotificationPermission
         public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
@@ -108,6 +110,7 @@ public external interface NotificationAction {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface NotificationDirection {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -157,6 +160,7 @@ public open external class NotificationEvent : org.w3c.workers.ExtendableEvent {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
     public final override /*1*/ /*fake_override*/ fun waitUntil(/*0*/ f: kotlin.js.Promise<kotlin.Any?>): kotlin.Unit
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -251,6 +255,7 @@ public external interface NotificationOptions {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface NotificationPermission {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int

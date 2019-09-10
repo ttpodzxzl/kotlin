@@ -51,6 +51,7 @@ public external interface ArrayBufferView : org.khronos.webgl.BufferDataSource {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// removed unused @marker annotation [5]
 public external interface BufferDataSource {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -236,6 +237,7 @@ public open external class Int8Array : org.khronos.webgl.ArrayBufferView {
     }
 }
 
+// removed unused @marker annotation [5]
 public external interface TexImageSource {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -445,6 +447,7 @@ public open external class WebGLContextEvent : org.w3c.dom.events.Event {
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -1271,6 +1274,7 @@ public abstract external class WebGLRenderingContext : org.khronos.webgl.WebGLRe
     }
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface WebGLRenderingContextBase {
     public abstract val canvas: org.w3c.dom.HTMLCanvasElement
         public abstract fun <get-canvas>(): org.w3c.dom.HTMLCanvasElement

@@ -53,6 +53,7 @@ public abstract external class PerformanceNavigation {
 
 public abstract external class PerformanceTiming {
     /*primary*/ public constructor PerformanceTiming()
+    // "unsigned long long" should be converted to Number to allow to cast it to ULong [7]
     public open val connectEnd: kotlin.Number
         public open fun <get-connectEnd>(): kotlin.Number
     public open val connectStart: kotlin.Number

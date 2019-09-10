@@ -5,8 +5,10 @@ package org.w3c.dom.events
 @kotlin.internal.InlineOnly public inline fun FocusEventInit(/*0*/ relatedTarget: org.w3c.dom.events.EventTarget? = ..., /*1*/ view: org.w3c.dom.Window? = ..., /*2*/ detail: kotlin.Int? = ..., /*3*/ bubbles: kotlin.Boolean? = ..., /*4*/ cancelable: kotlin.Boolean? = ..., /*5*/ composed: kotlin.Boolean? = ...): org.w3c.dom.events.FocusEventInit
 @kotlin.internal.InlineOnly public inline fun InputEventInit(/*0*/ data: kotlin.String? = ..., /*1*/ isComposing: kotlin.Boolean? = ..., /*2*/ view: org.w3c.dom.Window? = ..., /*3*/ detail: kotlin.Int? = ..., /*4*/ bubbles: kotlin.Boolean? = ..., /*5*/ cancelable: kotlin.Boolean? = ..., /*6*/ composed: kotlin.Boolean? = ...): org.w3c.dom.events.InputEventInit
 @kotlin.internal.InlineOnly public inline fun KeyboardEventInit(/*0*/ key: kotlin.String? = ..., /*1*/ code: kotlin.String? = ..., /*2*/ location: kotlin.Int? = ..., /*3*/ repeat: kotlin.Boolean? = ..., /*4*/ isComposing: kotlin.Boolean? = ..., /*5*/ ctrlKey: kotlin.Boolean? = ..., /*6*/ shiftKey: kotlin.Boolean? = ..., /*7*/ altKey: kotlin.Boolean? = ..., /*8*/ metaKey: kotlin.Boolean? = ..., /*9*/ modifierAltGraph: kotlin.Boolean? = ..., /*10*/ modifierCapsLock: kotlin.Boolean? = ..., /*11*/ modifierFn: kotlin.Boolean? = ..., /*12*/ modifierFnLock: kotlin.Boolean? = ..., /*13*/ modifierHyper: kotlin.Boolean? = ..., /*14*/ modifierNumLock: kotlin.Boolean? = ..., /*15*/ modifierScrollLock: kotlin.Boolean? = ..., /*16*/ modifierSuper: kotlin.Boolean? = ..., /*17*/ modifierSymbol: kotlin.Boolean? = ..., /*18*/ modifierSymbolLock: kotlin.Boolean? = ..., /*19*/ view: org.w3c.dom.Window? = ..., /*20*/ detail: kotlin.Int? = ..., /*21*/ bubbles: kotlin.Boolean? = ..., /*22*/ cancelable: kotlin.Boolean? = ..., /*23*/ composed: kotlin.Boolean? = ...): org.w3c.dom.events.KeyboardEventInit
+// "region" argument was missing because of a parser bug [2]
 @kotlin.internal.InlineOnly public inline fun MouseEventInit(/*0*/ screenX: kotlin.Int? = ..., /*1*/ screenY: kotlin.Int? = ..., /*2*/ clientX: kotlin.Int? = ..., /*3*/ clientY: kotlin.Int? = ..., /*4*/ button: kotlin.Short? = ..., /*5*/ buttons: kotlin.Short? = ..., /*6*/ relatedTarget: org.w3c.dom.events.EventTarget? = ..., /*7*/ region: kotlin.String? = ..., /*8*/ ctrlKey: kotlin.Boolean? = ..., /*9*/ shiftKey: kotlin.Boolean? = ..., /*10*/ altKey: kotlin.Boolean? = ..., /*11*/ metaKey: kotlin.Boolean? = ..., /*12*/ modifierAltGraph: kotlin.Boolean? = ..., /*13*/ modifierCapsLock: kotlin.Boolean? = ..., /*14*/ modifierFn: kotlin.Boolean? = ..., /*15*/ modifierFnLock: kotlin.Boolean? = ..., /*16*/ modifierHyper: kotlin.Boolean? = ..., /*17*/ modifierNumLock: kotlin.Boolean? = ..., /*18*/ modifierScrollLock: kotlin.Boolean? = ..., /*19*/ modifierSuper: kotlin.Boolean? = ..., /*20*/ modifierSymbol: kotlin.Boolean? = ..., /*21*/ modifierSymbolLock: kotlin.Boolean? = ..., /*22*/ view: org.w3c.dom.Window? = ..., /*23*/ detail: kotlin.Int? = ..., /*24*/ bubbles: kotlin.Boolean? = ..., /*25*/ cancelable: kotlin.Boolean? = ..., /*26*/ composed: kotlin.Boolean? = ...): org.w3c.dom.events.MouseEventInit
 @kotlin.internal.InlineOnly public inline fun UIEventInit(/*0*/ view: org.w3c.dom.Window? = ..., /*1*/ detail: kotlin.Int? = ..., /*2*/ bubbles: kotlin.Boolean? = ..., /*3*/ cancelable: kotlin.Boolean? = ..., /*4*/ composed: kotlin.Boolean? = ...): org.w3c.dom.events.UIEventInit
+// "region" argument was missing because of a parser bug [2]
 @kotlin.internal.InlineOnly public inline fun WheelEventInit(/*0*/ deltaX: kotlin.Double? = ..., /*1*/ deltaY: kotlin.Double? = ..., /*2*/ deltaZ: kotlin.Double? = ..., /*3*/ deltaMode: kotlin.Int? = ..., /*4*/ screenX: kotlin.Int? = ..., /*5*/ screenY: kotlin.Int? = ..., /*6*/ clientX: kotlin.Int? = ..., /*7*/ clientY: kotlin.Int? = ..., /*8*/ button: kotlin.Short? = ..., /*9*/ buttons: kotlin.Short? = ..., /*10*/ relatedTarget: org.w3c.dom.events.EventTarget? = ..., /*11*/ region: kotlin.String? = ..., /*12*/ ctrlKey: kotlin.Boolean? = ..., /*13*/ shiftKey: kotlin.Boolean? = ..., /*14*/ altKey: kotlin.Boolean? = ..., /*15*/ metaKey: kotlin.Boolean? = ..., /*16*/ modifierAltGraph: kotlin.Boolean? = ..., /*17*/ modifierCapsLock: kotlin.Boolean? = ..., /*18*/ modifierFn: kotlin.Boolean? = ..., /*19*/ modifierFnLock: kotlin.Boolean? = ..., /*20*/ modifierHyper: kotlin.Boolean? = ..., /*21*/ modifierNumLock: kotlin.Boolean? = ..., /*22*/ modifierScrollLock: kotlin.Boolean? = ..., /*23*/ modifierSuper: kotlin.Boolean? = ..., /*24*/ modifierSymbol: kotlin.Boolean? = ..., /*25*/ modifierSymbolLock: kotlin.Boolean? = ..., /*26*/ view: org.w3c.dom.Window? = ..., /*27*/ detail: kotlin.Int? = ..., /*28*/ bubbles: kotlin.Boolean? = ..., /*29*/ cancelable: kotlin.Boolean? = ..., /*30*/ composed: kotlin.Boolean? = ...): org.w3c.dom.events.WheelEventInit
 
 public open external class CompositionEvent : org.w3c.dom.events.UIEvent {
@@ -46,6 +48,7 @@ public open external class CompositionEvent : org.w3c.dom.events.UIEvent {
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -252,6 +255,7 @@ public open external class FocusEvent : org.w3c.dom.events.UIEvent {
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -331,6 +335,7 @@ public open external class InputEvent : org.w3c.dom.events.UIEvent {
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -436,6 +441,7 @@ public open external class KeyboardEvent : org.w3c.dom.events.UIEvent {
 
     public companion object Companion {
         /*primary*/ private constructor Companion()
+        // we should add static members from parents to emulate inheritance [1]
         public final val AT_TARGET: kotlin.Short
             public final fun <get-AT_TARGET>(): kotlin.Short
         public final val BUBBLING_PHASE: kotlin.Short
@@ -450,6 +456,7 @@ public open external class KeyboardEvent : org.w3c.dom.events.UIEvent {
             public final fun <get-DOM_KEY_LOCATION_RIGHT>(): kotlin.Int
         public final val DOM_KEY_LOCATION_STANDARD: kotlin.Int
             public final fun <get-DOM_KEY_LOCATION_STANDARD>(): kotlin.Int
+        // we should add static members from parents to emulate inheritance [1]
         public final val NONE: kotlin.Short
             public final fun <get-NONE>(): kotlin.Short
         public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
@@ -594,6 +601,8 @@ public open external class MouseEvent : org.w3c.dom.events.UIEvent, org.w3c.dom.
         public open override /*1*/ /*fake_override*/ fun <get-type>(): kotlin.String
     public open override /*1*/ /*fake_override*/ val view: org.w3c.dom.Window?
         public open override /*1*/ /*fake_override*/ fun <get-view>(): org.w3c.dom.Window?
+    // these properties were hardcoded to be commented out because they were causing compile-time conflicts
+    // now, as I believe, they are safe to use [10]
     public open val x: kotlin.Double
         public open fun <get-x>(): kotlin.Double
     public open val y: kotlin.Double
@@ -608,6 +617,7 @@ public open external class MouseEvent : org.w3c.dom.events.UIEvent, org.w3c.dom.
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*2*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -688,6 +698,7 @@ public external interface MouseEventInit : org.w3c.dom.events.EventModifierInit 
     public open override /*1*/ /*fake_override*/ var modifierSymbolLock: kotlin.Boolean?
         public open override /*1*/ /*fake_override*/ fun <get-modifierSymbolLock>(): kotlin.Boolean?
         public open override /*1*/ /*fake_override*/ fun <set-modifierSymbolLock>(/*0*/ value: kotlin.Boolean?): kotlin.Unit
+    // "region" property was missing because of a parser bug [2]
     public open var region: kotlin.String?
         public open fun <get-region>(): kotlin.String?
         public open fun <set-region>(/*0*/ value: kotlin.String?): kotlin.Unit
@@ -746,6 +757,7 @@ public open external class UIEvent : org.w3c.dom.events.Event {
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -849,6 +861,8 @@ public open external class WheelEvent : org.w3c.dom.events.MouseEvent {
         public open override /*1*/ /*fake_override*/ fun <get-type>(): kotlin.String
     public open override /*1*/ /*fake_override*/ val view: org.w3c.dom.Window?
         public open override /*1*/ /*fake_override*/ fun <get-view>(): org.w3c.dom.Window?
+    // these properties were hardcoded to be commented out because they were causing compile-time conflicts
+    // now, as I believe, they are safe to use [10]
     public open override /*1*/ /*fake_override*/ val x: kotlin.Double
         public open override /*1*/ /*fake_override*/ fun <get-x>(): kotlin.Double
     public open override /*1*/ /*fake_override*/ val y: kotlin.Double
@@ -865,6 +879,7 @@ public open external class WheelEvent : org.w3c.dom.events.MouseEvent {
 
     public companion object Companion {
         /*primary*/ private constructor Companion()
+        // we should add static members from parents to emulate inheritance [1]
         public final val AT_TARGET: kotlin.Short
             public final fun <get-AT_TARGET>(): kotlin.Short
         public final val BUBBLING_PHASE: kotlin.Short
@@ -877,6 +892,7 @@ public open external class WheelEvent : org.w3c.dom.events.MouseEvent {
             public final fun <get-DOM_DELTA_PAGE>(): kotlin.Int
         public final val DOM_DELTA_PIXEL: kotlin.Int
             public final fun <get-DOM_DELTA_PIXEL>(): kotlin.Int
+        // we should add static members from parents to emulate inheritance [1]
         public final val NONE: kotlin.Short
             public final fun <get-NONE>(): kotlin.Short
         public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
@@ -961,6 +977,7 @@ public external interface WheelEventInit : org.w3c.dom.events.MouseEventInit {
     public open override /*1*/ /*fake_override*/ var modifierSymbolLock: kotlin.Boolean?
         public open override /*1*/ /*fake_override*/ fun <get-modifierSymbolLock>(): kotlin.Boolean?
         public open override /*1*/ /*fake_override*/ fun <set-modifierSymbolLock>(/*0*/ value: kotlin.Boolean?): kotlin.Unit
+    // "region" property was missing because of a parser bug [2]
     public open override /*1*/ /*fake_override*/ var region: kotlin.String?
         public open override /*1*/ /*fake_override*/ fun <get-region>(): kotlin.String?
         public open override /*1*/ /*fake_override*/ fun <set-region>(/*0*/ value: kotlin.String?): kotlin.Unit

@@ -4,10 +4,12 @@ package org.w3c.files
 @kotlin.internal.InlineOnly public inline fun FilePropertyBag(/*0*/ lastModified: kotlin.Int? = ..., /*1*/ type: kotlin.String? = ...): org.w3c.files.FilePropertyBag
 @kotlin.internal.InlineOnly public inline operator fun org.w3c.files.FileList.get(/*0*/ index: kotlin.Int): org.w3c.files.File?
 
+// we introduced support for nested union types (union types with other union types as members) [6]
 public open external class Blob : org.w3c.dom.ImageBitmapSource {
     /*primary*/ public constructor Blob(/*0*/ blobParts: kotlin.Array<dynamic> = ..., /*1*/ options: org.w3c.files.BlobPropertyBag = ...)
     public open val isClosed: kotlin.Boolean
         public open fun <get-isClosed>(): kotlin.Boolean
+    // "unsigned long long" should be converted to Number to allow to cast it to ULong [7]
     public open val size: kotlin.Number
         public open fun <get-size>(): kotlin.Number
     public open val type: kotlin.String
@@ -36,6 +38,7 @@ public open external class File : org.w3c.files.Blob {
         public open fun <get-lastModified>(): kotlin.Int
     public open val name: kotlin.String
         public open fun <get-name>(): kotlin.String
+    // "unsigned long long" should be converted to Number to allow to cast it to ULong [7]
     public open override /*1*/ /*fake_override*/ val size: kotlin.Number
         public open override /*1*/ /*fake_override*/ fun <get-size>(): kotlin.Number
     public open override /*1*/ /*fake_override*/ val type: kotlin.String

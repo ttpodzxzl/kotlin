@@ -1,5 +1,6 @@
 package org.w3c.dom.pointerevents
 
+// "region" argument was missing because of a parser bug [2]
 @kotlin.internal.InlineOnly public inline fun PointerEventInit(/*0*/ pointerId: kotlin.Int? = ..., /*1*/ width: kotlin.Double? = ..., /*2*/ height: kotlin.Double? = ..., /*3*/ pressure: kotlin.Float? = ..., /*4*/ tangentialPressure: kotlin.Float? = ..., /*5*/ tiltX: kotlin.Int? = ..., /*6*/ tiltY: kotlin.Int? = ..., /*7*/ twist: kotlin.Int? = ..., /*8*/ pointerType: kotlin.String? = ..., /*9*/ isPrimary: kotlin.Boolean? = ..., /*10*/ screenX: kotlin.Int? = ..., /*11*/ screenY: kotlin.Int? = ..., /*12*/ clientX: kotlin.Int? = ..., /*13*/ clientY: kotlin.Int? = ..., /*14*/ button: kotlin.Short? = ..., /*15*/ buttons: kotlin.Short? = ..., /*16*/ relatedTarget: org.w3c.dom.events.EventTarget? = ..., /*17*/ region: kotlin.String? = ..., /*18*/ ctrlKey: kotlin.Boolean? = ..., /*19*/ shiftKey: kotlin.Boolean? = ..., /*20*/ altKey: kotlin.Boolean? = ..., /*21*/ metaKey: kotlin.Boolean? = ..., /*22*/ modifierAltGraph: kotlin.Boolean? = ..., /*23*/ modifierCapsLock: kotlin.Boolean? = ..., /*24*/ modifierFn: kotlin.Boolean? = ..., /*25*/ modifierFnLock: kotlin.Boolean? = ..., /*26*/ modifierHyper: kotlin.Boolean? = ..., /*27*/ modifierNumLock: kotlin.Boolean? = ..., /*28*/ modifierScrollLock: kotlin.Boolean? = ..., /*29*/ modifierSuper: kotlin.Boolean? = ..., /*30*/ modifierSymbol: kotlin.Boolean? = ..., /*31*/ modifierSymbolLock: kotlin.Boolean? = ..., /*32*/ view: org.w3c.dom.Window? = ..., /*33*/ detail: kotlin.Int? = ..., /*34*/ bubbles: kotlin.Boolean? = ..., /*35*/ cancelable: kotlin.Boolean? = ..., /*36*/ composed: kotlin.Boolean? = ...): org.w3c.dom.pointerevents.PointerEventInit
 
 public open external class PointerEvent : org.w3c.dom.events.MouseEvent {
@@ -94,6 +95,7 @@ public open external class PointerEvent : org.w3c.dom.events.MouseEvent {
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short

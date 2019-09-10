@@ -39,6 +39,7 @@ public abstract external class CSSGroupingRule : org.w3c.dom.css.CSSRule {
     public final fun insertRule(/*0*/ rule: kotlin.String, /*1*/ index: kotlin.Int): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val CHARSET_RULE: kotlin.Short
@@ -84,6 +85,7 @@ public abstract external class CSSImportRule : org.w3c.dom.css.CSSRule {
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val CHARSET_RULE: kotlin.Short
@@ -127,6 +129,7 @@ public abstract external class CSSMarginRule : org.w3c.dom.css.CSSRule {
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val CHARSET_RULE: kotlin.Short
@@ -172,6 +175,7 @@ public abstract external class CSSMediaRule : org.w3c.dom.css.CSSGroupingRule {
     public final override /*1*/ /*fake_override*/ fun insertRule(/*0*/ rule: kotlin.String, /*1*/ index: kotlin.Int): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val CHARSET_RULE: kotlin.Short
@@ -215,6 +219,7 @@ public abstract external class CSSNamespaceRule : org.w3c.dom.css.CSSRule {
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val CHARSET_RULE: kotlin.Short
@@ -263,6 +268,7 @@ public abstract external class CSSPageRule : org.w3c.dom.css.CSSGroupingRule {
     public final override /*1*/ /*fake_override*/ fun insertRule(/*0*/ rule: kotlin.String, /*1*/ index: kotlin.Int): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val CHARSET_RULE: kotlin.Short
@@ -1058,6 +1064,7 @@ public abstract external class CSSStyleRule : org.w3c.dom.css.CSSRule {
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val CHARSET_RULE: kotlin.Short
@@ -1119,6 +1126,7 @@ public external interface ElementCSSInlineStyle {
 }
 
 public external interface LinkStyle {
+    // we add get() = definedExternally here to allow users to inherit without overriding [9]
     public open val sheet: org.w3c.dom.css.StyleSheet?
         public open fun <get-sheet>(): org.w3c.dom.css.StyleSheet?
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
@@ -1173,6 +1181,8 @@ public abstract external class StyleSheetList : org.w3c.dom.ItemArrayLike<org.w3
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// this class was transfered from org.w3c.dom package
+// because of different approach to generating anonymous union types [5]
 public external interface UnionElementOrProcessingInstruction {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int

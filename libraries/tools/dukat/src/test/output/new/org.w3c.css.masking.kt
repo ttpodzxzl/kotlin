@@ -404,6 +404,7 @@ public abstract external class SVGClipPathElement : org.w3c.dom.svg.SVGElement, 
 
     public companion object Companion {
         /*primary*/ private constructor Companion()
+        // we should add static members from parents to emulate inheritance [1]
         public final val ATTRIBUTE_NODE: kotlin.Short
             public final fun <get-ATTRIBUTE_NODE>(): kotlin.Short
         public final val CDATA_SECTION_NODE: kotlin.Short
@@ -444,6 +445,7 @@ public abstract external class SVGClipPathElement : org.w3c.dom.svg.SVGElement, 
             public final fun <get-SVG_UNIT_TYPE_UNKNOWN>(): kotlin.Short
         public final val SVG_UNIT_TYPE_USERSPACEONUSE: kotlin.Short
             public final fun <get-SVG_UNIT_TYPE_USERSPACEONUSE>(): kotlin.Short
+        // we should add static members from parents to emulate inheritance [1]
         public final val TEXT_NODE: kotlin.Short
             public final fun <get-TEXT_NODE>(): kotlin.Short
         public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
@@ -864,6 +866,7 @@ public abstract external class SVGMaskElement : org.w3c.dom.svg.SVGElement, org.
 
     public companion object Companion {
         /*primary*/ private constructor Companion()
+        // we should add static members from parents to emulate inheritance [1]
         public final val ATTRIBUTE_NODE: kotlin.Short
             public final fun <get-ATTRIBUTE_NODE>(): kotlin.Short
         public final val CDATA_SECTION_NODE: kotlin.Short
@@ -904,6 +907,7 @@ public abstract external class SVGMaskElement : org.w3c.dom.svg.SVGElement, org.
             public final fun <get-SVG_UNIT_TYPE_UNKNOWN>(): kotlin.Short
         public final val SVG_UNIT_TYPE_USERSPACEONUSE: kotlin.Short
             public final fun <get-SVG_UNIT_TYPE_USERSPACEONUSE>(): kotlin.Short
+        // we should add static members from parents to emulate inheritance [1]
         public final val TEXT_NODE: kotlin.Short
             public final fun <get-TEXT_NODE>(): kotlin.Short
         public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean

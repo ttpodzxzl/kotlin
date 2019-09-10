@@ -45,8 +45,10 @@ public abstract external class Cache {
     public final fun delete(/*0*/ request: dynamic, /*1*/ options: org.w3c.workers.CacheQueryOptions = ...): kotlin.js.Promise<kotlin.Boolean>
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
+    // nested type parameters were converted to dynamic because of a parser bug [4]
     public final fun keys(/*0*/ request: dynamic = ..., /*1*/ options: org.w3c.workers.CacheQueryOptions = ...): kotlin.js.Promise<kotlin.Array<org.w3c.fetch.Request>>
     public final fun match(/*0*/ request: dynamic, /*1*/ options: org.w3c.workers.CacheQueryOptions = ...): kotlin.js.Promise<kotlin.Any?>
+    // nested type parameters were converted to dynamic because of a parser bug [4]
     public final fun matchAll(/*0*/ request: dynamic = ..., /*1*/ options: org.w3c.workers.CacheQueryOptions = ...): kotlin.js.Promise<kotlin.Array<org.w3c.fetch.Response>>
     public final fun put(/*0*/ request: dynamic, /*1*/ response: org.w3c.fetch.Response): kotlin.js.Promise<kotlin.Unit>
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
@@ -94,6 +96,7 @@ public abstract external class CacheStorage {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public final fun has(/*0*/ cacheName: kotlin.String): kotlin.js.Promise<kotlin.Boolean>
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
+    // nested type parameters were converted to dynamic because of a parser bug [4]
     public final fun keys(): kotlin.js.Promise<kotlin.Array<kotlin.String>>
     public final fun match(/*0*/ request: dynamic, /*1*/ options: org.w3c.workers.CacheQueryOptions = ...): kotlin.js.Promise<kotlin.Any?>
     public final fun open(/*0*/ cacheName: kotlin.String): kotlin.js.Promise<org.w3c.workers.Cache>
@@ -126,6 +129,7 @@ public external interface ClientQueryOptions {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface ClientType {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -145,6 +149,7 @@ public abstract external class Clients {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public final fun get(/*0*/ id: kotlin.String): kotlin.js.Promise<kotlin.Any?>
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
+    // nested type parameters were converted to dynamic because of a parser bug [4]
     public final fun matchAll(/*0*/ options: org.w3c.workers.ClientQueryOptions = ...): kotlin.js.Promise<kotlin.Array<org.w3c.workers.Client>>
     public final fun openWindow(/*0*/ url: kotlin.String): kotlin.js.Promise<org.w3c.workers.WindowClient?>
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
@@ -182,6 +187,7 @@ public open external class ExtendableEvent : org.w3c.dom.events.Event {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
     public final fun waitUntil(/*0*/ f: kotlin.js.Promise<kotlin.Any?>): kotlin.Unit
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -255,6 +261,7 @@ public open external class ExtendableMessageEvent : org.w3c.workers.ExtendableEv
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
     public final override /*1*/ /*fake_override*/ fun waitUntil(/*0*/ f: kotlin.js.Promise<kotlin.Any?>): kotlin.Unit
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -340,6 +347,7 @@ public open external class FetchEvent : org.w3c.workers.ExtendableEvent {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
     public final override /*1*/ /*fake_override*/ fun waitUntil(/*0*/ f: kotlin.js.Promise<kotlin.Any?>): kotlin.Unit
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -417,6 +425,7 @@ public open external class ForeignFetchEvent : org.w3c.workers.ExtendableEvent {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
     public final override /*1*/ /*fake_override*/ fun waitUntil(/*0*/ f: kotlin.js.Promise<kotlin.Any?>): kotlin.Unit
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -481,6 +490,7 @@ public external interface ForeignFetchResponse {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface FrameType {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -526,6 +536,7 @@ public open external class FunctionalEvent : org.w3c.workers.ExtendableEvent {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
     public final override /*1*/ /*fake_override*/ fun waitUntil(/*0*/ f: kotlin.js.Promise<kotlin.Any?>): kotlin.Unit
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -575,6 +586,7 @@ public open external class InstallEvent : org.w3c.workers.ExtendableEvent {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
     public final override /*1*/ /*fake_override*/ fun waitUntil(/*0*/ f: kotlin.js.Promise<kotlin.Any?>): kotlin.Unit
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -643,6 +655,7 @@ public abstract external class ServiceWorkerContainer : org.w3c.dom.events.Event
     public final override /*1*/ /*fake_override*/ fun dispatchEvent(/*0*/ event: org.w3c.dom.events.Event): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public final fun getRegistration(/*0*/ clientURL: kotlin.String = ...): kotlin.js.Promise<kotlin.Any?>
+    // nested type parameters were converted to dynamic because of a parser bug [4]
     public final fun getRegistrations(): kotlin.js.Promise<kotlin.Array<org.w3c.workers.ServiceWorkerRegistration>>
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public final fun register(/*0*/ scriptURL: kotlin.String, /*1*/ options: org.w3c.workers.RegistrationOptions = ...): kotlin.js.Promise<org.w3c.workers.ServiceWorkerRegistration>
@@ -774,6 +787,7 @@ public open external class ServiceWorkerMessageEvent : org.w3c.dom.events.Event 
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -839,6 +853,7 @@ public abstract external class ServiceWorkerRegistration : org.w3c.dom.events.Ev
     public final override /*1*/ /*fake_override*/ fun addEventListener(/*0*/ type: kotlin.String, /*1*/ callback: org.w3c.dom.events.EventListener?, /*2*/ options: dynamic = ...): kotlin.Unit
     public final override /*1*/ /*fake_override*/ fun dispatchEvent(/*0*/ event: org.w3c.dom.events.Event): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
+    // nested type parameters were converted to dynamic because of a parser bug [4]
     public final fun getNotifications(/*0*/ filter: org.w3c.notifications.GetNotificationOptions = ...): kotlin.js.Promise<kotlin.Array<org.w3c.notifications.Notification>>
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public final fun methodName(): kotlin.js.Promise<dynamic>
@@ -850,6 +865,7 @@ public abstract external class ServiceWorkerRegistration : org.w3c.dom.events.Ev
     public final fun update(): kotlin.js.Promise<kotlin.Unit>
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface ServiceWorkerState {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -863,12 +879,15 @@ public abstract external class ServiceWorkerRegistration : org.w3c.dom.events.Ev
     }
 }
 
+// removed unused @marker annotation [5]
 public external interface UnionClientOrMessagePortOrServiceWorker {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// this class was transfered from org.w3c.dom package
+// because of different approach to generating anonymous union types [5]
 public external interface UnionMessagePortOrServiceWorker {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int

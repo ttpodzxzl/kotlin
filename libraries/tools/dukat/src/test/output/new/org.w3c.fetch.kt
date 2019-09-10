@@ -159,6 +159,7 @@ public open external class Request : org.w3c.fetch.Body {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface RequestCache {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -172,6 +173,7 @@ public open external class Request : org.w3c.fetch.Body {
     }
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface RequestCredentials {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -185,6 +187,7 @@ public open external class Request : org.w3c.fetch.Body {
     }
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface RequestDestination {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -240,6 +243,7 @@ public external interface RequestInit {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface RequestMode {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -253,6 +257,7 @@ public external interface RequestInit {
     }
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface RequestRedirect {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -266,6 +271,7 @@ public external interface RequestInit {
     }
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface RequestType {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -336,6 +342,7 @@ public external interface ResponseInit {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface ResponseType {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int

@@ -108,6 +108,7 @@ public external interface ConstrainULongRange : org.w3c.dom.mediacapture.ULongRa
 }
 
 public external interface ConstrainablePattern {
+    // we add get() and set(value) = definedExternally to allow users to inherit without overriding [9]
     public open var onoverconstrained: ((org.w3c.dom.events.Event) -> dynamic)?
         public open fun <get-onoverconstrained>(): ((org.w3c.dom.events.Event) -> dynamic)?
         public open fun <set-onoverconstrained>(/*0*/ value: ((org.w3c.dom.events.Event) -> dynamic)?): kotlin.Unit
@@ -180,6 +181,7 @@ public abstract external class MediaDeviceInfo {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface MediaDeviceKind {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -201,6 +203,7 @@ public abstract external class MediaDevices : org.w3c.dom.events.EventTarget {
     public final override /*1*/ /*fake_override*/ fun addEventListener(/*0*/ type: kotlin.String, /*1*/ callback: ((org.w3c.dom.events.Event) -> kotlin.Unit)?, /*2*/ options: dynamic = ...): kotlin.Unit
     public final override /*1*/ /*fake_override*/ fun addEventListener(/*0*/ type: kotlin.String, /*1*/ callback: org.w3c.dom.events.EventListener?, /*2*/ options: dynamic = ...): kotlin.Unit
     public final override /*1*/ /*fake_override*/ fun dispatchEvent(/*0*/ event: org.w3c.dom.events.Event): kotlin.Boolean
+    // nested type parameters were converted to dynamic because of a parser bug [2]
     public final fun enumerateDevices(): kotlin.js.Promise<kotlin.Array<org.w3c.dom.mediacapture.MediaDeviceInfo>>
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public final fun getSupportedConstraints(): org.w3c.dom.mediacapture.MediaTrackSupportedConstraints
@@ -330,6 +333,7 @@ public open external class MediaStreamTrackEvent : org.w3c.dom.events.Event {
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -364,6 +368,7 @@ public external interface MediaStreamTrackEventInit : org.w3c.dom.EventInit {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface MediaStreamTrackState {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -683,6 +688,7 @@ public open external class OverconstrainedErrorEvent : org.w3c.dom.events.Event 
     public final override /*1*/ /*fake_override*/ fun stopPropagation(): kotlin.Unit
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 
+    // we should add static members from parents to emulate inheritance [1]
     public companion object Companion {
         /*primary*/ private constructor Companion()
         public final val AT_TARGET: kotlin.Short
@@ -735,6 +741,7 @@ public external interface ULongRange {
     public open override /*1*/ /*fake_override*/ fun toString(): kotlin.String
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface VideoFacingModeEnum {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
@@ -748,6 +755,7 @@ public external interface ULongRange {
     }
 }
 
+// file-level suppress changed to declaration-level
 @kotlin.Suppress(names = {"NESTED_CLASS_IN_EXTERNAL_INTERFACE"}) public external interface VideoResizeModeEnum {
     public open override /*1*/ /*fake_override*/ fun equals(/*0*/ other: kotlin.Any?): kotlin.Boolean
     public open override /*1*/ /*fake_override*/ fun hashCode(): kotlin.Int
