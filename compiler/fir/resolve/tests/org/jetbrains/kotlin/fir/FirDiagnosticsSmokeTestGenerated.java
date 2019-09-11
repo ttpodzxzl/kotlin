@@ -319,6 +319,11 @@ public class FirDiagnosticsSmokeTestGenerated extends AbstractFirDiagnosticsSmok
         runTest("compiler/testData/diagnostics/tests/IsExpressions.kt");
     }
 
+    @TestMetadata("KJK.kt")
+    public void testKJK() throws Exception {
+        runTest("compiler/testData/diagnostics/tests/KJK.kt");
+    }
+
     @TestMetadata("kt13401.kt")
     public void testKt13401() throws Exception {
         runTest("compiler/testData/diagnostics/tests/kt13401.kt");
