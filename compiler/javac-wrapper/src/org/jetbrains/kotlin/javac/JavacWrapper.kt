@@ -53,7 +53,7 @@ import javax.lang.model.element.Element
 import javax.lang.model.type.TypeMirror
 import javax.tools.JavaFileManager
 import javax.tools.JavaFileObject
-import javax.tools.StandardLocation
+import javax.tools.StandardLocation.*
 import com.sun.tools.javac.util.List as JavacList
 
 class JavacWrapper(
@@ -112,12 +112,12 @@ class JavacWrapper(
         // use rt.jar instead of lib/ct.sym
         fileManager.setSymbolFileEnabled(false)
         bootClasspath?.let {
-            val cp = fileManager.getLocation(StandardLocation.PLATFORM_CLASS_PATH) + jvmClasspathRoots
-            fileManager.setLocation(StandardLocation.PLATFORM_CLASS_PATH, it)
-            fileManager.setLocation(StandardLocation.CLASS_PATH, cp)
-        } ?: fileManager.setLocation(StandardLocation.CLASS_PATH, jvmClasspathRoots)
+            val cp = fileManager.getLocation(PLATFORM_CLASS_PATH) + jvmClasspathRoots
+            fileManager.setLocation(PLATFORM_CLASS_PATH, it)
+            fileManager.setLocation(CLASS_PATH, cp)
+        } ?: fileManager.setLocation(CLASS_PATH, jvmClasspathRoots)
         sourcePath?.let {
-            fileManager.setLocation(StandardLocation.SOURCE_PATH, sourcePath)
+            fileManager.setLocation(SOURCE_PATH, sourcePath)
         }
     }
 
@@ -161,18 +161,19 @@ class JavacWrapper(
 
     fun compile(outDir: File? = null): Boolean = with(javac) {
         if (!compileJava) return true
-        if (errorCount() > 0) return false
+        var errorCount = errorCount()
+        if (errorCount > 0) return false
 
         val javaFilesNumber = fileObjects.length()
         if (javaFilesNumber == 0) return true
 
         fileManager.setClassPathForCompilation(outDir)
-        context.get(Log.outKey)?.println(
-            "Compiling $javaFilesNumber Java source files" +
-                    " to [${fileManager.getLocation(StandardLocation.CLASS_OUTPUT)?.firstOrNull()?.path}]"
-        )
+        val information = "Compiling $javaFilesNumber Java source files" +
+                " to [${fileManager.getLocation(CLASS_OUTPUT)?.firstOrNull()?.path}]"
+        context.get(Log.outKey)?.println(information)
         compile(fileObjects)
-        errorCount() == 0
+        errorCount = errorCount()
+        errorCount == 0
     }
 
     override fun close() {
@@ -248,8 +249,8 @@ class JavacWrapper(
                     ?.map { SymbolBasedClass(it, this, null, it.classfile) }
                     .orEmpty()
 
-    fun knownClassNamesInPackage(fqName: FqName): Set<String> =
-        treeBasedJavaClasses
+    fun knownClassNamesInPackage(fqName: FqName): Set<String> {
+        return treeBasedJavaClasses
             .filterKeys { it.packageFqName == fqName }
             .mapTo(hashSetOf()) { it.value.name.asString() } +
                 elements.getPackageElement(fqName.asString())
@@ -258,6 +259,7 @@ class JavacWrapper(
                     ?.filterIsInstance<Symbol.ClassSymbol>()
                     ?.map { it.name.toString() }
                     .orEmpty()
+    }
 
     fun getKotlinClassifier(classId: ClassId): JavaClass? =
         kotlinClassifiersCache.getKotlinClassifier(classId)
@@ -329,15 +331,19 @@ class JavacWrapper(
 
     private fun JavacFileManager.setClassPathForCompilation(outDir: File?) = apply {
         (outDir ?: outputDirectory)?.let { outputDir ->
+            if (outputDir.exists()) {
+                fileManager.setLocation(CLASS_PATH, fileManager.getLocation(CLASS_PATH) + outputDir)
+            }
             outputDir.mkdirs()
-            fileManager.setLocation(StandardLocation.CLASS_OUTPUT, listOf(outputDir))
+            fileManager.setLocation(CLASS_OUTPUT, listOf(outputDir))
+
         }
 
         val reader = ClassReader.instance(context)
         val names = Names.instance(context)
-        val outDirName = getLocation(StandardLocation.CLASS_OUTPUT)?.firstOrNull()?.path ?: ""
+        val outDirName = getLocation(CLASS_OUTPUT)?.firstOrNull()?.path ?: ""
 
-        list(StandardLocation.CLASS_OUTPUT, "", setOf(JavaFileObject.Kind.CLASS), true)
+        list(CLASS_OUTPUT, "", setOf(JavaFileObject.Kind.CLASS), true)
             .forEach { fileObject ->
                 val fqName = fileObject.name
                     .substringAfter(outDirName)
@@ -347,7 +353,9 @@ class JavacWrapper(
                         if (className.startsWith(".")) className.substring(1) else className
                     }.let(names::fromString)
 
-                symbols.classes[fqName]?.let { symbols.classes[fqName] = null }
+                symbols.classes[fqName]?.let {
+                    symbols.classes[fqName] = null
+                }
                 val symbol = reader.enterClass(fqName, fileObject)
 
                 (elements.getPackageOf(symbol) as? Symbol.PackageSymbol)?.let { packageSymbol ->
