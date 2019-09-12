@@ -15140,6 +15140,11 @@ public class BlackBoxCodegenTestGenerated extends AbstractBlackBoxCodegenTest {
             runTest("compiler/testData/codegen/box/jvmStatic/default.kt");
         }
 
+        @TestMetadata("defaultCrossFile.kt")
+        public void testDefaultCrossFile() throws Exception {
+            runTest("compiler/testData/codegen/box/jvmStatic/defaultCrossFile.kt");
+        }
+
         @TestMetadata("enumCompanion.kt")
         public void testEnumCompanion() throws Exception {
             runTest("compiler/testData/codegen/box/jvmStatic/enumCompanion.kt");

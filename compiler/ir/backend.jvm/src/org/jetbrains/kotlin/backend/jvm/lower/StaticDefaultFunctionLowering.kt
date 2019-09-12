@@ -94,7 +94,14 @@ private class StaticDefaultCallLowering(
 
     override fun visitCall(expression: IrCall): IrExpression {
         val callee = expression.symbol.owner
-        if (callee.origin !== IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER || callee.dispatchReceiverParameter == null) {
+        /*
+            (callee.dispatchReceiverParameter != null) but (expression.dispatchReceiver == null)
+            may happen due to phase mismatch between files.
+         */
+        if (callee.origin !== IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER ||
+                callee.dispatchReceiverParameter == null ||
+                expression.dispatchReceiver == null
+        ) {
             return super.visitCall(expression)
         }
 
