@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.backend.common.phaser.makeIrFilePhase
 import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
 import org.jetbrains.kotlin.backend.jvm.intrinsics.receiverAndArgs
-import org.jetbrains.kotlin.codegen.OwnerKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -156,7 +155,7 @@ private class SyntheticAccessorLowering(val context: JvmBackendContext) : IrElem
             origin = JvmLoweredDeclarationOrigin.SYNTHETIC_ACCESSOR
             name = source.accessorName()
             visibility = Visibilities.PUBLIC
-            isSuspend = false // do not generate state-machine for synthetic accessors
+            isSuspend = source.isSuspend // synthetic accessors of suspend functions are handled in codegen
         }.also { accessor ->
             // Find the right container to insert the accessor. Simply put, when we call a function on a class A,
             // we also need to put its accessor into A. However, due to the way that calls are implemented in the
@@ -416,7 +415,7 @@ private class SyntheticAccessorLowering(val context: JvmBackendContext) : IrElem
     private var nameCounter = 0
 
     private fun IrFunction.accessorName(): Name {
-        val jvmName = context.methodSignatureMapper.mapFunctionName(this, OwnerKind.IMPLEMENTATION)
+        val jvmName = context.methodSignatureMapper.mapFunctionName(this)
         return Name.identifier("access\$$jvmName\$${nameCounter++}")
     }
 

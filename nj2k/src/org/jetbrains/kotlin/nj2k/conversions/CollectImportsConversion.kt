@@ -15,17 +15,19 @@ import org.jetbrains.kotlin.nj2k.NewJ2kConverterContext
 import org.jetbrains.kotlin.nj2k.symbols.JKSymbol
 import org.jetbrains.kotlin.nj2k.symbols.fqNameToImport
 import org.jetbrains.kotlin.nj2k.tree.*
+
+import org.jetbrains.kotlin.nj2k.types.JKClassType
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 
-class CollectImportsConversion(private val context: NewJ2kConverterContext) : RecursiveApplicableConversionBase() {
+class CollectImportsConversion(context: NewJ2kConverterContext) : RecursiveApplicableConversionBase(context) {
     override fun applyToElement(element: JKTreeElement): JKTreeElement {
         when (element) {
             is JKClassAccessExpression -> addSymbol(element.identifier)
             is JKFieldAccessExpression -> addSymbol(element.identifier)
-            is JKMethodCallExpression -> addSymbol(element.identifier)
+            is JKCallExpression -> addSymbol(element.identifier)
             is JKAnnotation -> addSymbol(element.classSymbol)
-            is JKJavaNewExpression -> addSymbol(element.classSymbol)
+            is JKNewExpression -> addSymbol(element.classSymbol)
             is JKInheritanceInfo -> {
                 element.implements
             }

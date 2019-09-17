@@ -12,10 +12,10 @@ import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
 import org.jetbrains.kotlin.idea.resolve.ResolutionFacade
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
+import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.callUtil.getType
 import org.jetbrains.kotlin.types.KotlinType
-import org.jetbrains.kotlin.types.typeUtil.isUnit
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 abstract class ContextCollector(private val resolutionFacade: ResolutionFacade) {
@@ -27,15 +27,15 @@ abstract class ContextCollector(private val resolutionFacade: ResolutionFacade) 
         }
 
     private fun KtTypeReference.classReference(): ClassReference? =
-        analyze()[BindingContext.TYPE, this]?.classReference()
+        analyze(resolutionFacade)[BindingContext.TYPE, this]?.classReference()
 
-    private fun KtTypeElement.toData(): TypeElementData {
-        val typeReference = parent as? KtTypeReference ?: return TypeElementDataImpl(this)
-        val typeParameterDescriptor = analyze(resolutionFacade)[BindingContext.TYPE, typeReference]
-            ?.constructor
-            ?.declarationDescriptor
-            ?.safeAs<TypeParameterDescriptor>() ?: return TypeElementDataImpl(this)
-        return TypeParameterElementData(this, typeParameterDescriptor)
+    private fun KtTypeElement.toData(): TypeElementData? {
+        val typeReference = parent as? KtTypeReference ?: return null
+        val type = analyze(resolutionFacade)[BindingContext.TYPE, typeReference] ?: return null
+        val typeParameterDescriptor = type.constructor
+            .declarationDescriptor
+            ?.safeAs<TypeParameterDescriptor>() ?: return TypeElementDataImpl(this, type)
+        return TypeParameterElementData(this, type, typeParameterDescriptor)
     }
 
     fun collectTypeVariables(elements: List<KtElement>): InferenceContext {
@@ -43,44 +43,32 @@ abstract class ContextCollector(private val resolutionFacade: ResolutionFacade) 
         val typeElementToTypeVariable = mutableMapOf<KtTypeElement, TypeVariable>()
         val typeBasedTypeVariables = mutableListOf<TypeBasedTypeVariable>()
 
-        fun KtTypeReference.toBoundType(defaultState: State? = null): BoundType? {
+        fun KtTypeReference.toBoundType(owner: TypeVariableOwner, defaultState: State? = null): BoundType? {
             val typeElement = typeElement ?: return null
             val classReference = classReference() ?: NoClassReference
 
-            val state = when {
-                classReference.descriptor?.defaultType?.isUnit() == true -> State.LOWER
-                defaultState != null -> defaultState
-                else -> classReference.getState(typeElement)
-            }
+            val state = defaultState ?: classReference.getState(typeElement)
             val typeArguments =
                 if (classReference is DescriptorClassReference) {
                     typeElement.typeArgumentsAsTypes.zip(
                         classReference.descriptor.declaredTypeParameters
                     ) { typeArgument, typeParameter ->
                         TypeParameter(
-                            if (typeArgument == null) {
-                                BoundTypeImpl(StarProjectionLabel, emptyList())
-                            } else typeArgument.toBoundType() ?: BoundType.STAR_PROJECTION,
+                            typeArgument?.toBoundType(owner) ?: BoundType.STAR_PROJECTION,
                             typeParameter.variance
                         )
                     }
                 } else emptyList()
 
-            return if (state == null) {
-                BoundTypeImpl(
-                    GenericLabel(classReference),
-                    typeArguments
-                )
-            } else {
-                val typeVariable = TypeElementBasedTypeVariable(
-                    classReference,
-                    typeArguments,
-                    typeElement.toData(),
-                    state
-                )
-                typeElementToTypeVariable[typeElement] = typeVariable
-                typeVariable.asBoundType()
-            }
+            val typeVariable = TypeElementBasedTypeVariable(
+                classReference,
+                typeArguments,
+                typeElement.toData() ?: return null,
+                owner,
+                state
+            )
+            typeElementToTypeVariable[typeElement] = typeVariable
+            return typeVariable.asBoundType()
         }
 
         fun KotlinType.toBoundType(): BoundType? {
@@ -97,24 +85,24 @@ abstract class ContextCollector(private val resolutionFacade: ResolutionFacade) 
                     }
                 } else emptyList()
 
-            return if (state == null) {
-                BoundTypeImpl(
-                    GenericLabel(classReference),
-                    typeArguments
-                )
-            } else {
-                val typeVariable = TypeBasedTypeVariable(
-                    classReference,
-                    typeArguments,
-                    this,
-                    state
-                )
-                typeBasedTypeVariables += typeVariable
-                typeVariable.asBoundType()
-            }
+
+            val typeVariable = TypeBasedTypeVariable(
+                classReference,
+                typeArguments,
+                this,
+                state
+            )
+            typeBasedTypeVariables += typeVariable
+            return typeVariable.asBoundType()
         }
 
-        val substitutors = mutableMapOf<ClassDescriptor, ClassSubstitutor>()
+        val substitutors = mutableMapOf<ClassDescriptor, SuperTypesSubstitutor>()
+
+        fun isOrAsExpression(typeReference: KtTypeReference) {
+            val typeElement = typeReference.typeElement ?: return
+            val typeVariable = typeReference.toBoundType(OtherTarget)?.typeVariable ?: return
+            typeElementToTypeVariable[typeElement] = typeVariable
+        }
 
         for (element in elements) {
             element.forEachDescendantOfType<KtExpression> { expression ->
@@ -124,30 +112,37 @@ abstract class ContextCollector(private val resolutionFacade: ResolutionFacade) 
                             || expression is KtNamedFunction)
                 ) run {
                     val typeReference = expression.typeReference ?: return@run
-                    val typeVariable = typeReference.toBoundType()?.typeVariable ?: return@run
+                    val typeVariable = typeReference.toBoundType(
+                        when (expression) {
+                            is KtParameter -> expression.getStrictParentOfType<KtFunction>()?.let(::FunctionParameter)
+                            is KtFunction -> FunctionReturnType(expression)
+                            is KtProperty -> Property(expression)
+                            else -> null
+                        } ?: OtherTarget
+                    )?.typeVariable ?: return@run
                     declarationToTypeVariable[expression] = typeVariable
                 }
 
                 if (expression is KtTypeParameterListOwner) {
                     for (typeParameter in expression.typeParameters) {
-                        typeParameter.extendsBound?.toBoundType(defaultState = State.UPPER)
+                        typeParameter.extendsBound?.toBoundType(OtherTarget, defaultState = State.UPPER)
                     }
                     for (constraint in expression.typeConstraints) {
-                        constraint.boundTypeReference?.toBoundType(defaultState = State.UPPER)
+                        constraint.boundTypeReference?.toBoundType(OtherTarget, defaultState = State.UPPER)
                     }
                 }
 
                 when (expression) {
-                    is KtClass -> {
+                    is KtClassOrObject -> {
                         for (entry in expression.superTypeListEntries) {
                             for (argument in entry.typeReference?.typeElement?.typeArgumentsAsTypes ?: continue) {
-                                argument.toBoundType()
+                                argument?.toBoundType(OtherTarget)
                             }
                         }
                         val descriptor =
                             expression.resolveToDescriptorIfAny(resolutionFacade) ?: return@forEachDescendantOfType
                         substitutors[descriptor] =
-                            ClassSubstitutor.createFromKtClass(expression, resolutionFacade) ?: return@forEachDescendantOfType
+                            SuperTypesSubstitutor.createFromKtClass(expression, resolutionFacade) ?: return@forEachDescendantOfType
                         for (typeParameter in expression.typeParameters) {
                             val typeVariable = typeParameter.resolveToDescriptorIfAny(resolutionFacade)
                                 ?.safeAs<TypeParameterDescriptor>()
@@ -160,7 +155,7 @@ abstract class ContextCollector(private val resolutionFacade: ResolutionFacade) 
                     }
                     is KtCallExpression ->
                         for (typeArgument in expression.typeArguments) {
-                            typeArgument.typeReference?.toBoundType()
+                            typeArgument.typeReference?.toBoundType(TypeArgument)
                         }
                     is KtLambdaExpression -> {
                         val context = expression.analyze(resolutionFacade)
@@ -169,10 +164,11 @@ abstract class ContextCollector(private val resolutionFacade: ResolutionFacade) 
                         declarationToTypeVariable[expression.functionLiteral] = typeVariable
                     }
                     is KtBinaryExpressionWithTypeRHS -> {
-                        val typeReference = expression.right ?: return@forEachDescendantOfType
-                        val typeElement = typeReference.typeElement ?: return@forEachDescendantOfType
-                        val typeVariable = typeReference.toBoundType()?.typeVariable ?: return@forEachDescendantOfType
-                        typeElementToTypeVariable[typeElement] = typeVariable
+                        isOrAsExpression(expression.right ?: return@forEachDescendantOfType)
+
+                    }
+                    is KtIsExpression -> {
+                        isOrAsExpression(expression.typeReference ?: return@forEachDescendantOfType)
                     }
                 }
             }
@@ -192,5 +188,5 @@ abstract class ContextCollector(private val resolutionFacade: ResolutionFacade) 
         )
     }
 
-    abstract fun ClassReference.getState(typeElement: KtTypeElement?): State?
+    abstract fun ClassReference.getState(typeElement: KtTypeElement?): State
 }

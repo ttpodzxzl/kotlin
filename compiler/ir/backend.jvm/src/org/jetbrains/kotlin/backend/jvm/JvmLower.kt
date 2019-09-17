@@ -10,14 +10,13 @@ import org.jetbrains.kotlin.backend.common.lower.*
 import org.jetbrains.kotlin.backend.common.lower.loops.forLoopsPhase
 import org.jetbrains.kotlin.backend.common.phaser.*
 import org.jetbrains.kotlin.backend.jvm.lower.*
-import org.jetbrains.kotlin.codegen.OwnerKind
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.descriptors.Visibilities
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.util.PatchDeclarationParentsVisitor
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
+import org.jetbrains.kotlin.load.java.JavaVisibilities
 import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.name.NameUtils
 
@@ -75,7 +74,7 @@ private val propertiesPhase = makeIrFilePhase<JvmBackendContext>(
             val baseName =
                 if (context.state.languageVersionSettings.supportsFeature(LanguageFeature.UseGetterNameForPropertyAnnotationsMethodOnJvm)) {
                     property.getter?.let { getter ->
-                        context.methodSignatureMapper.mapFunctionName(getter, OwnerKind.IMPLEMENTATION)
+                        context.methodSignatureMapper.mapFunctionName(getter)
                     } ?: JvmAbi.getterName(property.name.asString())
                 } else {
                     property.name.asString()
@@ -90,10 +89,29 @@ private val propertiesPhase = makeIrFilePhase<JvmBackendContext>(
 
 internal val localDeclarationsPhase = makeIrFilePhase<CommonBackendContext>(
     { context ->
-        LocalDeclarationsLowering(context, object : LocalNameProvider {
-            override fun localName(declaration: IrDeclarationWithName): String =
-                NameUtils.sanitizeAsJavaIdentifier(super.localName(declaration))
-        }, Visibilities.PUBLIC)
+        LocalDeclarationsLowering(
+            context,
+            object : LocalNameProvider {
+                override fun localName(declaration: IrDeclarationWithName): String =
+                    NameUtils.sanitizeAsJavaIdentifier(super.localName(declaration))
+            },
+            object : VisibilityPolicy {
+                override fun forClass(declaration: IrClass, inInlineFunctionScope: Boolean): Visibility =
+                    if (declaration.origin == JvmLoweredDeclarationOrigin.LAMBDA_IMPL ||
+                        declaration.origin == JvmLoweredDeclarationOrigin.FUNCTION_REFERENCE_IMPL ||
+                        declaration.origin == JvmLoweredDeclarationOrigin.GENERATED_PROPERTY_REFERENCE) {
+                        scopedVisibility(inInlineFunctionScope)
+                    } else {
+                        declaration.visibility
+                    }
+
+                override fun forConstructor(declaration: IrConstructor, inInlineFunctionScope: Boolean): Visibility =
+                    scopedVisibility(inInlineFunctionScope)
+
+                private fun scopedVisibility(inInlineFunctionScope: Boolean): Visibility =
+                    if (inInlineFunctionScope) Visibilities.PUBLIC else JavaVisibilities.PACKAGE_VISIBILITY
+            }
+        )
     },
     name = "JvmLocalDeclarations",
     description = "Move local declarations to classes",
@@ -121,6 +139,13 @@ private val innerClassesPhase = makeIrFilePhase(
     prerequisite = setOf(localDeclarationsPhase)
 )
 
+private val returnableBlocksPhase = makeIrFilePhase(
+    ::ReturnableBlockLowering,
+    name = "ReturnableBlock",
+    description = "Replace returnable blocks with do-while(false) loops",
+    prerequisite = setOf(arrayConstructorPhase, assertionPhase)
+)
+
 private val jvmFilePhases =
         stripTypeAliasDeclarationsPhase then
         provisionalFunctionExpressionPhase then
@@ -141,6 +166,7 @@ private val jvmFilePhases =
         renameFieldsPhase then
         assertionPhase then
         tailrecPhase then
+        returnableBlocksPhase then
 
         jvmInlineClassPhase then
 

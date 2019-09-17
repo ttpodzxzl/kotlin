@@ -26,7 +26,7 @@ public class FirResolveTestCaseGenerated extends AbstractFirResolveTestCase {
     }
 
     public void testAllFilesPresentInResolve() throws Exception {
-        KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/fir/resolve/testData/resolve"), Pattern.compile("^([^.]+)\\.kt$"), TargetBackend.ANY, true, "stdlib");
+        KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/fir/resolve/testData/resolve"), Pattern.compile("^([^.]+)\\.kt$"), TargetBackend.ANY, true, "stdlib", "cfg", "smartcasts");
     }
 
     @TestMetadata("cast.kt")
@@ -285,6 +285,11 @@ public class FirResolveTestCaseGenerated extends AbstractFirResolveTestCase {
         @TestMetadata("dispatchReceiver.kt")
         public void testDispatchReceiver() throws Exception {
             runTest("compiler/fir/resolve/testData/resolve/expresssions/dispatchReceiver.kt");
+        }
+
+        @TestMetadata("genericPropertyAccess.kt")
+        public void testGenericPropertyAccess() throws Exception {
+            runTest("compiler/fir/resolve/testData/resolve/expresssions/genericPropertyAccess.kt");
         }
 
         @TestMetadata("importedReceiver.kt")

@@ -849,6 +849,11 @@ public class MoveStatementTestGenerated extends AbstractMoveStatementTest {
             runTest("idea/testData/codeInsight/moveUpDown/expressions/closureWthoutSpaces2.kt");
         }
 
+        @TestMetadata("comments.kt")
+        public void testComments() throws Exception {
+            runTest("idea/testData/codeInsight/moveUpDown/expressions/comments.kt");
+        }
+
         @TestMetadata("declaration1.kt")
         public void testDeclaration1() throws Exception {
             runTest("idea/testData/codeInsight/moveUpDown/expressions/declaration1.kt");
@@ -857,6 +862,26 @@ public class MoveStatementTestGenerated extends AbstractMoveStatementTest {
         @TestMetadata("declaration2.kt")
         public void testDeclaration2() throws Exception {
             runTest("idea/testData/codeInsight/moveUpDown/expressions/declaration2.kt");
+        }
+
+        @TestMetadata("hasComment1.kt")
+        public void testHasComment1() throws Exception {
+            runTest("idea/testData/codeInsight/moveUpDown/expressions/hasComment1.kt");
+        }
+
+        @TestMetadata("hasComment2.kt")
+        public void testHasComment2() throws Exception {
+            runTest("idea/testData/codeInsight/moveUpDown/expressions/hasComment2.kt");
+        }
+
+        @TestMetadata("hasComment3.kt")
+        public void testHasComment3() throws Exception {
+            runTest("idea/testData/codeInsight/moveUpDown/expressions/hasComment3.kt");
+        }
+
+        @TestMetadata("hasComment4.kt")
+        public void testHasComment4() throws Exception {
+            runTest("idea/testData/codeInsight/moveUpDown/expressions/hasComment4.kt");
         }
 
         @TestMetadata("If1.kt")
@@ -1107,6 +1132,16 @@ public class MoveStatementTestGenerated extends AbstractMoveStatementTest {
         @TestMetadata("qualifiedCall2.kt")
         public void testQualifiedCall2() throws Exception {
             runTest("idea/testData/codeInsight/moveUpDown/expressions/qualifiedCall2.kt");
+        }
+
+        @TestMetadata("semicolon1.kt")
+        public void testSemicolon1() throws Exception {
+            runTest("idea/testData/codeInsight/moveUpDown/expressions/semicolon1.kt");
+        }
+
+        @TestMetadata("semicolon2.kt")
+        public void testSemicolon2() throws Exception {
+            runTest("idea/testData/codeInsight/moveUpDown/expressions/semicolon2.kt");
         }
 
         @TestMetadata("when1.kt")

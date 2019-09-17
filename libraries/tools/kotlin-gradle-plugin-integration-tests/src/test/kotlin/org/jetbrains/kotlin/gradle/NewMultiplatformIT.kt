@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.gradle.util.*
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 import org.jetbrains.kotlin.konan.target.HostManager
 import org.junit.Assert
+import org.junit.Ignore
 import org.junit.Test
 import java.util.jar.JarFile
 import java.util.zip.ZipFile
@@ -911,7 +912,6 @@ class NewMultiplatformIT : BaseGradleIT() {
 
         // Remove outputs and check that they are rebuilt.
         assertTrue(projectDir.resolve(headerPaths[0]).delete())
-        assertTrue(projectDir.resolve(klibPath).delete())
         if (HostManager.hostIsMac) {
             assertTrue(projectDir.resolve(frameworkPaths[0]).deleteRecursively())
         }
@@ -919,8 +919,8 @@ class NewMultiplatformIT : BaseGradleIT() {
         build("assemble") {
             assertSuccessful()
             assertTasksUpToDate(linkTasks.drop(1))
+            assertTasksUpToDate(klibTask)
             assertTasksExecuted(linkTasks[0])
-            assertTasksExecuted(klibTask)
 
             if (HostManager.hostIsMac) {
                 assertTasksUpToDate(frameworkTasks.drop(1))
@@ -935,10 +935,20 @@ class NewMultiplatformIT : BaseGradleIT() {
     @Test
     fun testNativeBinaryGroovyDSL() = doTestNativeBinaryDSL("groovy-dsl")
 
+    private fun CompiledProject.checkNativeCommandLineFor(vararg taskPaths: String, check: (String) -> Unit) = taskPaths.forEach { taskPath ->
+        val commandLine = output.lineSequence().dropWhile {
+            !it.contains("Executing actions for task '$taskPath'")
+        }.first {
+            it.contains("Run tool: konanc")
+        }
+        check(commandLine)
+    }
+
     private fun doTestNativeBinaryDSL(
         projectName: String,
         gradleVersionRequired: GradleVersionRequired = gradleVersion
     ) = with(transformProjectWithPluginsDsl(projectName, gradleVersionRequired, "new-mpp-native-binaries")) {
+
         val hostSuffix = nativeHostTargetName.capitalize()
         val binaries = mutableListOf(
             "debugExecutable" to "native-binary",
@@ -973,10 +983,14 @@ class NewMultiplatformIT : BaseGradleIT() {
 
         val binariesTasks = arrayOf("${nativeHostTargetName}MainBinaries", "${nativeHostTargetName}TestBinaries")
 
+        val compileTask = "compileKotlin$hostSuffix"
+        val compileTestTask = "compileTestKotlin$hostSuffix"
+
         // Check that all link and run tasks are generated.
         build(*binariesTasks) {
             assertSuccessful()
             assertTasksExecuted(linkTasks.map { ":$it" })
+            assertTasksExecuted(":$compileTask", ":$compileTestTask")
             outputFiles.forEach {
                 assertFileExists(it)
             }
@@ -997,6 +1011,14 @@ class NewMultiplatformIT : BaseGradleIT() {
             assertSuccessful()
         }
 
+        // Check that kotlinOptions work fine for a compilation.
+        build(compileTask) {
+            assertSuccessful()
+            checkNativeCommandLineFor(":$compileTask") {
+                assertTrue(it.contains("-verbose"))
+            }
+        }
+
         // Check that run tasks work fine and an entry point can be specified.
         build("runDebugExecutable$hostSuffix") {
             assertSuccessful()
@@ -1010,6 +1032,16 @@ class NewMultiplatformIT : BaseGradleIT() {
 
         build("runTest2ReleaseExecutable$hostSuffix") {
             assertSuccessful()
+            assertTasksExecuted(":$compileTestTask")
+            checkNativeCommandLineFor(":linkTest2ReleaseExecutable$hostSuffix") {
+                assertTrue(it.contains("-tr"))
+                assertTrue(it.contains("-Xtime"))
+                // Check that kotlinOptions of the compilation don't affect the binary.
+                assertFalse(it.contains("-verbose"))
+                // Check that free args are still propagated to the binary (unlike other kotlinOptions, see KT-33717).
+                // TODO: Reverse this check when the args are fully separated.
+                assertTrue(it.contains("-nowarn"))
+            }
             assertTrue(output.contains("tests.foo"))
         }
 
@@ -1019,13 +1051,6 @@ class NewMultiplatformIT : BaseGradleIT() {
             assertTrue(output.contains("tests.foo"))
         }
 
-        fun CompiledProject.checkFrameworkCompilationCommandLine(check: (String) -> Unit) {
-            output.lineSequence().filter {
-                it.contains("Run tool: konanc") && it.contains("-p framework")
-            }.toList().also {
-                assertTrue(it.isNotEmpty())
-            }.forEach(check)
-        }
         if (HostManager.hostIsMac) {
 
             // Check dependency exporting and bitcode embedding in frameworks.
@@ -1036,7 +1061,7 @@ class NewMultiplatformIT : BaseGradleIT() {
                 fileInWorkingDir("build/bin/ios/releaseFramework/native_binary.framework/Headers/native_binary.h")
                     .readText().contains("+ (int32_t)exported")
                 // Check that by default release frameworks have bitcode embedded.
-                checkFrameworkCompilationCommandLine {
+                checkNativeCommandLineFor(":linkReleaseFrameworkIos") {
                     assertTrue(it.contains("-Xembed-bitcode"))
                     assertTrue(it.contains("-opt"))
                 }
@@ -1049,7 +1074,7 @@ class NewMultiplatformIT : BaseGradleIT() {
                 fileInWorkingDir("build/bin/ios/debugFramework/native_binary.framework/Headers/native_binary.h")
                     .readText().contains("+ (int32_t)exported")
                 // Check that by default debug frameworks have bitcode marker embedded.
-                checkFrameworkCompilationCommandLine {
+                checkNativeCommandLineFor(":linkDebugFrameworkIos") {
                     assertTrue(it.contains("-Xembed-bitcode-marker"))
                     assertTrue(it.contains("-g"))
                 }
@@ -1058,7 +1083,7 @@ class NewMultiplatformIT : BaseGradleIT() {
             // Check manual disabling bitcode embedding, custom command line args and building a static framework.
             build("linkCustomReleaseFrameworkIos") {
                 assertSuccessful()
-                checkFrameworkCompilationCommandLine {
+                checkNativeCommandLineFor(":linkCustomReleaseFrameworkIos") {
                     assertTrue(it.contains("-linker-option -L."))
                     assertTrue(it.contains("-Xtime"))
                     assertTrue(it.contains("-Xstatic-framework"))
@@ -1072,17 +1097,20 @@ class NewMultiplatformIT : BaseGradleIT() {
                 assertSuccessful()
                 assertFileExists("build/bin/iosSim/releaseFramework/native_binary.framework")
                 assertFileExists("build/bin/iosSim/debugFramework/native_binary.framework")
-                checkFrameworkCompilationCommandLine {
+                checkNativeCommandLineFor(":linkReleaseFrameworkIosSim", ":linkDebugFrameworkIosSim") {
                     assertFalse(it.contains("-Xembed-bitcode"))
                     assertFalse(it.contains("-Xembed-bitcode-marker"))
                 }
             }
 
-
             // Check that plugin doesn't allow exporting dependencies not added in the API configuration.
             val buildFile = listOf("build.gradle", "build.gradle.kts").map { projectDir.resolve(it) }.single { it.exists() }
             buildFile.modify {
                 it.replace("api(project(\":exported\"))", "")
+            }
+            projectDir.resolve("src/commonMain/kotlin/PackageMain.kt").modify {
+                // Remove usages of the ":exported" dependency to be able to compile the sources.
+                it.checkedReplace("import com.example.exported", "").checkedReplace("val exp = exported()", "val exp = 42")
             }
             build("linkReleaseFrameworkIos") {
                 assertFailed()
@@ -1090,6 +1118,68 @@ class NewMultiplatformIT : BaseGradleIT() {
                         "are not specified as API-dependencies of a corresponding source set"
                 assertTrue(output.contains(failureMsg))
             }
+        }
+    }
+
+    // Check that we still can build binaries from sources if the corresponding property is specified.
+    // TODO: Drop in 1.3.70.
+    @Test
+    fun testLinkNativeBinaryFromSources() = with(
+        transformProjectWithPluginsDsl("groovy-dsl", gradleVersion, "new-mpp-native-binaries")
+    ) {
+        val linkTask = ":linkDebugExecutable${nativeHostTargetName.capitalize()}"
+
+        val prefix = CompilerOutputKind.PROGRAM.prefix(HostManager.host)
+        val suffix = CompilerOutputKind.PROGRAM.suffix(HostManager.host)
+        val fileName = "${prefix}native-binary$suffix"
+        val outputFile = "build/bin/$nativeHostTargetName/debugExecutable/$fileName"
+
+        build(linkTask, "-Pkotlin.native.linkFromSources") {
+            assertSuccessful()
+            assertTasksExecuted(linkTask)
+            assertFileExists(outputFile)
+            checkNativeCommandLineFor(linkTask) {
+                assertTrue(it.contains("-Xcommon-sources="))
+                assertTrue(it.contains(projectDir.resolve("src/commonMain/kotlin/RootMain.kt").absolutePath))
+            }
+        }
+    }
+
+    // We propagate compilation args to link tasks for now (see KT-33717).
+    // TODO: Reenable the test when the args are separated.
+    @Ignore
+    @Test
+    fun testNativeFreeArgsWarning() = with(transformProjectWithPluginsDsl("kotlin-dsl", gradleVersion, "new-mpp-native-binaries")) {
+        gradleBuildScript().appendText(
+            """kotlin.targets["macos64"].compilations["main"].kotlinOptions.freeCompilerArgs += "-opt""""
+        )
+        gradleBuildScript("exported").appendText(
+            """
+                kotlin.targets["macos64"].compilations["main"].kotlinOptions.freeCompilerArgs += "-opt"
+                kotlin.targets["macos64"].compilations["test"].kotlinOptions.freeCompilerArgs += "-g"
+                kotlin.targets["linux64"].compilations["main"].kotlinOptions.freeCompilerArgs +=
+                    listOf("-g", "-Xdisable-phases=Devirtualization,BuildDFG")
+            """.trimIndent()
+        )
+        build("tasks") {
+            assertSuccessful()
+            assertContains(
+                """
+                The following free compiler arguments must be specified for a binary instead of a compilation:
+                    * In project ':':
+                        * In target 'macos64':
+                            * Compilation: 'main', arguments: [-opt]
+                    * In project ':exported':
+                        * In target 'linux64':
+                            * Compilation: 'main', arguments: [-g, -Xdisable-phases=Devirtualization,BuildDFG]
+                        * In target 'macos64':
+                            * Compilation: 'main', arguments: [-opt]
+                            * Compilation: 'test', arguments: [-g]
+
+                Please move them into final binary declarations. E.g. binaries.executable { freeCompilerArgs += "..." }
+                See more about final binaries: https://kotlinlang.org/docs/reference/building-mpp-with-gradle.html#building-final-native-binaries.
+                """.trimIndent()
+            )
         }
     }
 
@@ -1214,6 +1304,19 @@ class NewMultiplatformIT : BaseGradleIT() {
                 """.trimMargin()
             )
             assertContains("Find test: null")
+        }
+    }
+
+    @Test
+    fun kt33750() {
+        // Check that build fails if a test executable crashes.
+        with(Project("new-mpp-native-tests", gradleVersion)) {
+            setupWorkingDir()
+            projectDir.resolve("src/commonTest/kotlin/test.kt").appendText("\nval fail: Int = error(\"\")\n")
+            build("check") {
+                assertFailed()
+                output.contains("exited with errors \\(exit code: \\d+\\)".toRegex())
+            }
         }
     }
 

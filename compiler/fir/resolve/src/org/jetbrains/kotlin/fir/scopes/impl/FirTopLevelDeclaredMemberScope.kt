@@ -12,15 +12,16 @@ import org.jetbrains.kotlin.fir.scopes.ProcessorAction
 import org.jetbrains.kotlin.fir.scopes.ProcessorAction.NEXT
 import org.jetbrains.kotlin.fir.scopes.ProcessorAction.STOP
 import org.jetbrains.kotlin.fir.scopes.processConstructors
-import org.jetbrains.kotlin.fir.symbols.ConePropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 class FirTopLevelDeclaredMemberScope(
     file: FirFile,
     session: FirSession,
+    private val scopeSession: ScopeSession,
     lookupInFir: Boolean = true
 ) : FirAbstractProviderBasedScope(session, lookupInFir) {
     private val packageFqName = file.packageFqName
@@ -32,7 +33,7 @@ class FirTopLevelDeclaredMemberScope(
                 matchedClass,
                 processor,
                 session,
-                ScopeSession(),
+                scopeSession,
                 name
             ).stop()
         ) {
@@ -50,7 +51,7 @@ class FirTopLevelDeclaredMemberScope(
     override fun processPropertiesByName(name: Name, processor: (FirCallableSymbol<*>) -> ProcessorAction): ProcessorAction {
         val symbols = provider.getTopLevelCallableSymbols(packageFqName, name)
         for (symbol in symbols) {
-            if (symbol is ConePropertySymbol && !processor(symbol)) {
+            if (symbol is FirPropertySymbol && !processor(symbol)) {
                 return STOP
             }
         }

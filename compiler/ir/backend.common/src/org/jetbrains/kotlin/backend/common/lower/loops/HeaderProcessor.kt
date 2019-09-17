@@ -102,12 +102,12 @@ internal sealed class ForLoopHeader(
                     //   // (use `<` if last is exclusive)
                     //   (step > 0 && inductionVar <= last) || (step < 0 || last <= inductionVar)
                     val stepKotlinType = progressionType.stepType(builtIns).toKotlinType()
-                    val zero = if (progressionType == ProgressionType.LONG_PROGRESSION) irLong(0) else irInt(0)
+                    val isLong = progressionType == ProgressionType.LONG_PROGRESSION
                     context.oror(
                         context.andand(
                             irCall(builtIns.greaterFunByOperandType[stepKotlinType]!!).apply {
                                 putValueArgument(0, irGet(step))
-                                putValueArgument(1, zero)
+                                putValueArgument(1, if (isLong) irLong(0) else irInt(0))
                             },
                             irCall(compFun).apply {
                                 putValueArgument(0, irGet(inductionVariable))
@@ -116,7 +116,7 @@ internal sealed class ForLoopHeader(
                         context.andand(
                             irCall(builtIns.lessFunByOperandType[stepKotlinType]!!).apply {
                                 putValueArgument(0, irGet(step))
-                                putValueArgument(1, zero)
+                                putValueArgument(1, if (isLong) irLong(0) else irInt(0))
                             },
                             irCall(compFun).apply {
                                 putValueArgument(0, irGet(last))
@@ -209,7 +209,7 @@ internal class IndexedGetLoopHeader(
 
     override fun initializeLoopVariable(symbols: Symbols<CommonBackendContext>, builder: DeclarationIrBuilder) = with(builder) {
         // inductionVar = loopVar[inductionVariable]
-        val indexedGetFun = headerInfo.objectVariable.type.getClass()!!.functions.first { it.name.asString() == "get" }
+        val indexedGetFun = with(headerInfo.expressionHandler) { headerInfo.objectVariable.type.getFunction }
         irCall(indexedGetFun).apply {
             dispatchReceiver = irGet(headerInfo.objectVariable)
             putValueArgument(0, irGet(inductionVariable))
@@ -310,8 +310,7 @@ internal class HeaderProcessor(
                         progressionType.elementCastFunctionName
                     ),
                     nameHint = "inductionVariable",
-                    isMutable = true,
-                    origin = IrDeclarationOrigin.FOR_LOOP_IMPLICIT_VARIABLE
+                    isMutable = true
                 )
 
                 // Due to features of PSI2IR we can obtain nullable arguments here while actually
@@ -325,8 +324,7 @@ internal class HeaderProcessor(
                             progressionType.elementCastFunctionName
                         )
                     ),
-                    nameHint = "last",
-                    origin = IrDeclarationOrigin.FOR_LOOP_IMPLICIT_VARIABLE
+                    nameHint = "last"
                 )
 
                 val stepValue = scope.createTemporaryVariable(
@@ -336,8 +334,7 @@ internal class HeaderProcessor(
                             progressionType.stepCastFunctionName
                         )
                     ),
-                    nameHint = "step",
-                    origin = IrDeclarationOrigin.FOR_LOOP_IMPLICIT_VARIABLE
+                    nameHint = "step"
                 )
 
                 return when (headerInfo) {

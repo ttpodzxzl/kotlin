@@ -18,8 +18,6 @@ import org.jetbrains.kotlin.config.JVMConfigurationKeys
 import org.jetbrains.kotlin.fir.builder.RawFirBuilder
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.dump.MultiModuleHtmlFirDump
-import org.jetbrains.kotlin.fir.resolve.FirProvider
-import org.jetbrains.kotlin.fir.resolve.impl.FirProviderImpl
 import org.jetbrains.kotlin.fir.resolve.transformers.FirTotalResolveTransformer
 import org.jetbrains.kotlin.fir.scopes.ProcessorAction
 import org.jetbrains.kotlin.test.ConfigurationKind
@@ -30,7 +28,6 @@ import java.io.FileOutputStream
 import java.io.PrintStream
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.system.measureNanoTime
 
 
 private const val FAIL_FAST = true
@@ -41,11 +38,14 @@ private const val FIR_HTML_DUMP_PATH = "tmp/firDump-html"
 private const val FIR_LOGS_PATH = "tmp/fir-logs"
 
 internal val PASSES = System.getProperty("fir.bench.passes")?.toInt() ?: 3
+internal val SEPARATE_PASS_DUMP = System.getProperty("fir.bench.dump.separate_pass", "false") == "true"
 
 class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
 
-    private lateinit var bench: FirResolveBench
     private lateinit var dump: MultiModuleHtmlFirDump
+    private lateinit var bench: FirResolveBench
+    private var bestStatistics: FirResolveBench.TotalStatistics? = null
+    private var bestPass: Int = 0
 
     private fun runAnalysis(moduleData: ModuleData, environment: KotlinCoreEnvironment) {
         val project = environment.project
@@ -57,16 +57,7 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
         val builder = RawFirBuilder(session, stubMode = false)
 
         val totalTransformer = FirTotalResolveTransformer()
-        val firFiles = ktFiles.toList().mapNotNull {
-            var firFile: FirFile? = null
-            val time = measureNanoTime {
-                firFile = builder.buildFirFile(it)
-                (session.service<FirProvider>() as FirProviderImpl).recordFile(firFile!!)
-            }
-            bench.countBuilder(builder, time)
-            firFile
-        }.toList()
-
+        val firFiles = bench.buildFiles(builder, ktFiles)
 
         println("Raw FIR up, files: ${firFiles.size}")
 
@@ -91,7 +82,7 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
     private fun ModuleData.disambiguatedName(): String {
         val baseName = qualifiedName
         var disambiguatedName = baseName
-        var counter = 0
+        var counter = 1
         while(!dumpedModules.add(disambiguatedName)) {
             disambiguatedName = "$baseName.${counter++}"
         }
@@ -138,12 +129,26 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
     }
 
     override fun afterPass(pass: Int) {
-        bench.report(System.out, errorTypeReports = false)
+        val statistics = bench.getTotalStatistics()
+        statistics.report(System.out, "Pass $pass")
 
-        saveReport(pass)
+        saveReport(pass, statistics)
+        if (statistics.totalTime < (bestStatistics?.totalTime ?: Long.MAX_VALUE)) {
+            bestStatistics = statistics
+            bestPass = pass
+        }
+        if (!SEPARATE_PASS_DUMP) {
+            dumpedModules.clear()
+        }
         if (FAIL_FAST) {
             bench.throwFailure()
         }
+    }
+
+    override fun afterAllPasses() {
+        val bestStatistics = bestStatistics ?: return
+        printStatistics(bestStatistics, "Best pass: $bestPass")
+        printErrors(bestStatistics)
     }
 
     private val folderDateFormat = SimpleDateFormat("yyyy-MM-dd")
@@ -164,17 +169,23 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
         reportDateFormat.format(startDate)
     }
 
-    private fun saveReport(pass: Int) {
+    private fun saveReport(pass: Int, statistics: FirResolveBench.TotalStatistics) {
         if (DUMP_FIR) dump.finish()
+        printStatistics(statistics, "PASS $pass")
+    }
+
+    private fun printErrors(statistics: FirResolveBench.TotalStatistics) {
+        PrintStream(FileOutputStream(reportDir().resolve("errors-$reportDateStr.log"), true)).use(statistics::reportErrors)
+    }
+
+    private fun printStatistics(statistics: FirResolveBench.TotalStatistics, header: String) {
         PrintStream(
             FileOutputStream(
                 reportDir().resolve("report-$reportDateStr.log"),
                 true
             )
         ).use { stream ->
-            val sep = "=".repeat(10)
-            stream.println("$sep PASS $pass $sep")
-            bench.report(stream)
+            statistics.report(stream, header)
             stream.println()
             stream.println()
         }
@@ -187,5 +198,6 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
             bench = FirResolveBench(withProgress = false)
             runTestOnce(i)
         }
+        afterAllPasses()
     }
 }

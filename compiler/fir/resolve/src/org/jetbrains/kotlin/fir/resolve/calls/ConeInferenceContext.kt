@@ -12,12 +12,14 @@ import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.resolve.withArguments
 import org.jetbrains.kotlin.fir.resolve.withNullability
 import org.jetbrains.kotlin.fir.service
-import org.jetbrains.kotlin.fir.symbols.ConeClassLikeSymbol
-import org.jetbrains.kotlin.fir.symbols.ConeClassifierSymbol
 import org.jetbrains.kotlin.fir.symbols.StandardClassIds
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassifierSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.invoke
 import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.types.impl.ConeClassTypeImpl
+import org.jetbrains.kotlin.fir.types.impl.ConeTypeParameterTypeImpl
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 import org.jetbrains.kotlin.types.AbstractTypeCheckerContext
 import org.jetbrains.kotlin.types.model.*
@@ -58,11 +60,15 @@ interface ConeInferenceContext : TypeSystemInferenceExtensionContext,
         arguments: List<TypeArgumentMarker>,
         nullable: Boolean
     ): SimpleTypeMarker {
-        require(constructor is ConeClassifierSymbol)
-        when (constructor) {
-            is ConeClassLikeSymbol -> return ConeClassTypeImpl(
+        require(constructor is FirClassifierSymbol<*>)
+        return when (constructor) {
+            is FirClassLikeSymbol<*> -> ConeClassTypeImpl(
                 constructor.toLookupTag(),
                 (arguments as List<ConeKotlinTypeProjection>).toTypedArray(),
+                nullable
+            )
+            is FirTypeParameterSymbol -> ConeTypeParameterTypeImpl(
+                constructor.toLookupTag(),
                 nullable
             )
             else -> error("!")
@@ -159,7 +165,7 @@ interface ConeInferenceContext : TypeSystemInferenceExtensionContext,
     }
 
     override fun TypeConstructorMarker.isUnitTypeConstructor(): Boolean {
-        return this is ConeClassLikeSymbol && this.classId == StandardClassIds.Unit
+        return this is FirClassLikeSymbol<*> && this.classId == StandardClassIds.Unit
     }
 
     override fun Collection<KotlinTypeMarker>.singleBestRepresentative(): KotlinTypeMarker? {

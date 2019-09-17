@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.fir
 
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.contracts.description.InvocationKind
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
@@ -15,6 +16,7 @@ import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.expressions.impl.FirFunctionCallImpl
 import org.jetbrains.kotlin.fir.expressions.impl.FirTryExpressionImpl
 import org.jetbrains.kotlin.fir.expressions.impl.FirWhenExpressionImpl
+import org.jetbrains.kotlin.fir.references.FirControlFlowGraphReference
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirTypeProjection
@@ -54,7 +56,9 @@ fun FirAnonymousFunction.copy(
     body: FirBlock? = this.body,
     annotations: List<FirAnnotationCall> = this.annotations,
     typeRef: FirTypeRef = this.typeRef,
-    label: FirLabel? = this.label
+    label: FirLabel? = this.label,
+    controlFlowGraphReference: FirControlFlowGraphReference = this.controlFlowGraphReference,
+    invocationKind: InvocationKind? = this.invocationKind
 ): FirAnonymousFunction {
     return FirAnonymousFunctionImpl(session, psi, returnTypeRef, receiverTypeRef, symbol).apply {
         this.valueParameters.addAll(valueParameters)
@@ -62,6 +66,8 @@ fun FirAnonymousFunction.copy(
         this.annotations.addAll(annotations)
         this.typeRef = typeRef
         this.label = label
+        this.controlFlowGraphReference = controlFlowGraphReference
+        this.invocationKind = invocationKind
     }
 }
 

@@ -431,7 +431,7 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
         if (externalImportsProvider != null) {
             myEnvironment.getSourceFiles().forEach(
                     file -> {
-                        ScriptCompilationConfigurationWrapper refinedConfiguration = ErrorHandlingKt.valueOrNull(externalImportsProvider.getScriptConfigurationResult(file));
+                        ScriptCompilationConfigurationWrapper refinedConfiguration = externalImportsProvider.getScriptConfiguration(file);
                         if (refinedConfiguration != null) {
                             files.addAll(refinedConfiguration.getDependenciesClassPath());
                         }
@@ -890,9 +890,13 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
     }
 
     protected void printReport(File wholeFile) {
-        boolean isIgnored = InTextDirectivesUtils.isIgnoredTarget(getBackend(), wholeFile);
+        boolean isIgnored = InTextDirectivesUtils.isIgnoredTarget(getBackend(), wholeFile, getIgnoreBackendDirectivePrefix());
         if (!isIgnored) {
             System.out.println(generateToText());
         }
+    }
+
+    protected String getIgnoreBackendDirectivePrefix() {
+        return InTextDirectivesUtils.IGNORE_BACKEND_DIRECTIVE_PREFIX;
     }
 }

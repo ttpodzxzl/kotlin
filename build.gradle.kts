@@ -169,7 +169,7 @@ extra["versions.trove4j"] = "1.0.20181211"
 extra["versions.ktor-network"] = "1.0.1"
 
 if (!project.hasProperty("versions.kotlin-native")) {
-    extra["versions.kotlin-native"] = "1.3.50-dev-11052"
+    extra["versions.kotlin-native"] = "1.3.60-dev-12266"
 }
 
 val isTeamcityBuild = project.kotlinBuildProperties.isTeamcityBuild
@@ -234,6 +234,7 @@ extra["compilerModules"] = arrayOf(
     ":core:metadata.jvm",
     ":core:descriptors",
     ":core:descriptors.jvm",
+    ":core:descriptors.runtime",
     ":core:deserialization",
     ":core:util.runtime",
     ":core:type-system",
@@ -515,11 +516,16 @@ tasks {
         dependsOn(":compiler:fir:fir2ir:test")
         dependsOn(":compiler:fir:lightTree:test")
     }
+    
+    register("compilerFrontendVisualizerTest") {
+        dependsOn("compiler:visualizer:test")
+    }
 
     register("scriptingTest") {
         dependsOn("dist")
         dependsOn(":kotlin-script-util:test")
         dependsOn(":kotlin-scripting-compiler:test")
+        dependsOn(":kotlin-scripting-common:test")
         dependsOn(":kotlin-scripting-jvm-host-test:test")
         dependsOn(":kotlin-scripting-jsr223-test:test")
         dependsOn(":kotlin-scripting-jvm-host-test:embeddableTest")

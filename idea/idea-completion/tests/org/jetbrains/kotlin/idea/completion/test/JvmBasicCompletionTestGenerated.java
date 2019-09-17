@@ -101,6 +101,16 @@ public class JvmBasicCompletionTestGenerated extends AbstractJvmBasicCompletionT
             runTest("idea/idea-completion/testData/basic/common/DataClassMembers2.kt");
         }
 
+        @TestMetadata("EnumItemsThroughChainedTypeAlias.kt")
+        public void testEnumItemsThroughChainedTypeAlias() throws Exception {
+            runTest("idea/idea-completion/testData/basic/common/EnumItemsThroughChainedTypeAlias.kt");
+        }
+
+        @TestMetadata("EnumItemsThroughSingleTypeAlias.kt")
+        public void testEnumItemsThroughSingleTypeAlias() throws Exception {
+            runTest("idea/idea-completion/testData/basic/common/EnumItemsThroughSingleTypeAlias.kt");
+        }
+
         @TestMetadata("ExtendClassName.kt")
         public void testExtendClassName() throws Exception {
             runTest("idea/idea-completion/testData/basic/common/ExtendClassName.kt");
@@ -1163,6 +1173,11 @@ public class JvmBasicCompletionTestGenerated extends AbstractJvmBasicCompletionT
             @TestMetadata("container.kt")
             public void testContainer() throws Exception {
                 runTest("idea/idea-completion/testData/basic/common/dslMarker/container.kt");
+            }
+
+            @TestMetadata("noDslCompletionForNonDslReciever.kt")
+            public void testNoDslCompletionForNonDslReciever() throws Exception {
+                runTest("idea/idea-completion/testData/basic/common/dslMarker/noDslCompletionForNonDslReciever.kt");
             }
 
             @TestMetadata("root.kt")

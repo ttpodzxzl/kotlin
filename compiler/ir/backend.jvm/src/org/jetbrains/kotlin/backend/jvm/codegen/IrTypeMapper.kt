@@ -7,13 +7,15 @@ package org.jetbrains.kotlin.backend.jvm.codegen
 
 import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.builtins.functions.FunctionClassDescriptor
-import org.jetbrains.kotlin.builtins.isSuspendFunctionType
-import org.jetbrains.kotlin.builtins.transformSuspendFunctionToRuntimeFunctionType
 import org.jetbrains.kotlin.codegen.AsmUtil
 import org.jetbrains.kotlin.codegen.JvmCodegenUtil
 import org.jetbrains.kotlin.codegen.signature.AsmTypeFactory
 import org.jetbrains.kotlin.codegen.signature.JvmSignatureWriter
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper
+import org.jetbrains.kotlin.codegen.state.KotlinTypeMapperBase
+import org.jetbrains.kotlin.descriptors.ClassDescriptor
+import org.jetbrains.kotlin.descriptors.ClassifierDescriptor
+import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
@@ -22,6 +24,7 @@ import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.types.impl.originalKotlinType
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.isSuspendFunction
 import org.jetbrains.kotlin.load.kotlin.TypeMappingMode
 import org.jetbrains.kotlin.load.kotlin.computeExpandedTypeForInlineClass
 import org.jetbrains.kotlin.load.kotlin.mapBuiltInType
@@ -30,8 +33,18 @@ import org.jetbrains.kotlin.resolve.jvm.AsmTypes
 import org.jetbrains.kotlin.types.Variance
 import org.jetbrains.org.objectweb.asm.Type
 
-class IrTypeMapper(private val context: JvmBackendContext) {
-    private val typeSystem = IrTypeCheckerContext(context.irBuiltIns)
+class IrTypeMapper(private val context: JvmBackendContext) : KotlinTypeMapperBase() {
+    internal val typeSystem = IrTypeCheckerContext(context.irBuiltIns)
+
+    override fun mapClass(classifier: ClassifierDescriptor): Type =
+        when (classifier) {
+            is ClassDescriptor ->
+                mapClass(context.referenceClass(classifier).owner)
+            is TypeParameterDescriptor ->
+                mapType(context.referenceTypeParameter(classifier).owner.defaultType)
+            else ->
+                error("Unknown descriptor: $classifier")
+        }
 
     fun classInternalName(irClass: IrClass): String =
         context.getLocalClassInfo(irClass)?.internalName
@@ -67,11 +80,13 @@ class IrTypeMapper(private val context: JvmBackendContext) {
             error("Unexpected type: $type (original Kotlin type=$kotlinType of ${kotlinType?.let { it::class }})")
         }
 
-        // TODO: rewrite this part to produce the correct Type without the fake descriptor
-        if (type.toKotlinType().isSuspendFunctionType) {
-            return context.state.typeMapper.mapType(
-                transformSuspendFunctionToRuntimeFunctionType(type.toKotlinType(), isReleaseCoroutines = true), sw, mode
-            )
+        if (type.isSuspendFunction()) {
+            val arguments =
+                type.arguments.dropLast(1).map { (it as IrTypeProjection).type } +
+                        context.ir.symbols.continuationClass.typeWith((type.arguments.last() as IrTypeProjection).type) +
+                        context.irBuiltIns.anyNType
+            val runtimeFunctionType = context.referenceClass(context.builtIns.getFunction(arguments.size - 1)).typeWith(arguments)
+            return mapType(runtimeFunctionType, mode, sw)
         }
 
         with(typeSystem) {
@@ -146,8 +161,8 @@ class IrTypeMapper(private val context: JvmBackendContext) {
             }
             else -> error(
                 "Local class should have its name computed in InventNamesForLocalClasses: ${klass.fqNameWhenAvailable}\n" +
-                        "Ensure that any lowering that transforms elements with local class info (classes, function references, " +
-                        "IrTypeOperatorCall for SAM conversions) invokes `copyAttributes` on the transformed element."
+                        "Ensure that any lowering that transforms elements with local class info (classes, function references) " +
+                        "invokes `copyAttributes` on the transformed element."
             )
         }
     }

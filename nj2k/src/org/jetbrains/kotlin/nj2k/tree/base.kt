@@ -5,39 +5,155 @@
 
 package org.jetbrains.kotlin.nj2k.tree
 
-import org.jetbrains.kotlin.j2k.ast.Nullability
+import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.nj2k.tree.visitors.JKVisitor
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 
-interface JKOperator {
-    val token: JKOperatorToken
-    val precedence: Int
-}
-
-interface JKOperatorToken {
-    val text: String
-}
-
-interface JKKtOperatorToken : JKOperatorToken {
-    val operatorName: String
-}
-
-interface JKQualifier
 
 interface JKElement {
     val parent: JKElement?
-
     fun detach(from: JKElement)
-
     fun attach(to: JKElement)
 }
 
+private class JKChild<T : JKElement>(val value: Int) : ReadWriteProperty<JKTreeElement, T> {
+    override operator fun getValue(thisRef: JKTreeElement, property: KProperty<*>): T {
+        @Suppress("UNCHECKED_CAST")
+        return thisRef.children[value] as T
+    }
 
-interface JKBranchElement : JKElement {
-    val children: List<Any>
-
-    val valid: Boolean
-    fun invalidate()
+    override operator fun setValue(thisRef: JKTreeElement, property: KProperty<*>, value: T) {
+        @Suppress("UNCHECKED_CAST")
+        (thisRef.children[this.value] as T).detach(thisRef)
+        thisRef.children[this.value] = value
+        value.attach(thisRef)
+    }
 }
 
-interface JKType {
-    val nullability: Nullability
+private class JKListChild<T : JKElement>(val value: Int) : ReadWriteProperty<JKTreeElement, List<T>> {
+    override operator fun getValue(thisRef: JKTreeElement, property: KProperty<*>): List<T> {
+        @Suppress("UNCHECKED_CAST")
+        return thisRef.children[value] as List<T>
+    }
+
+    override operator fun setValue(thisRef: JKTreeElement, property: KProperty<*>, value: List<T>) {
+        @Suppress("UNCHECKED_CAST")
+        (thisRef.children[this.value] as List<T>).forEach { it.detach(thisRef) }
+        thisRef.children[this.value] = value
+        value.forEach { it.attach(thisRef) }
+    }
 }
+
+
+abstract class JKTreeElement : JKElement, JKNonCodeElementsListOwner, Cloneable {
+    override val leftNonCodeElements: MutableList<JKNonCodeElement> = mutableListOf()
+    override val rightNonCodeElements: MutableList<JKNonCodeElement> = mutableListOf()
+
+    override var parent: JKElement? = null
+
+    override fun detach(from: JKElement) {
+        val prevParent = parent
+        require(from == prevParent)
+        parent = null
+    }
+
+    override fun attach(to: JKElement) {
+        check(parent == null)
+        parent = to
+    }
+
+    open fun accept(visitor: JKVisitor) = visitor.visitTreeElement(this)
+
+    private var childNum = 0
+
+    protected fun <T : JKTreeElement, U : T> child(v: U): ReadWriteProperty<JKTreeElement, T> {
+        children.add(childNum, v)
+        v.attach(this)
+        return JKChild(childNum++)
+    }
+
+    protected inline fun <reified T : JKTreeElement> children(): ReadWriteProperty<JKTreeElement, List<T>> {
+        return children(emptyList())
+    }
+
+    protected fun <T : JKTreeElement> children(v: List<T>): ReadWriteProperty<JKTreeElement, List<T>> {
+        children.add(childNum, v)
+        v.forEach { it.attach(this) }
+        return JKListChild(childNum++)
+    }
+
+    open fun acceptChildren(visitor: JKVisitor) {
+        forEachChild { it.accept(visitor) }
+    }
+
+    private inline fun forEachChild(block: (JKTreeElement) -> Unit) {
+        children.forEach {
+            @Suppress("UNCHECKED_CAST")
+            if (it is JKTreeElement)
+                block(it)
+            else
+                (it as? List<JKTreeElement>)?.forEach { block(it) }
+        }
+    }
+
+
+    private var valid: Boolean = true
+
+    fun invalidate() {
+        forEachChild { it.detach(this) }
+        valid = false
+    }
+
+    fun onAttach() {
+        check(valid)
+    }
+
+    var children: MutableList<Any> = mutableListOf()
+        private set
+
+    @Suppress("UNCHECKED_CAST")
+    open fun copy(): JKTreeElement {
+        val cloned = clone() as JKTreeElement
+        val deepClonedChildren =
+            cloned.children.map {
+                when (it) {
+                    is JKTreeElement -> it.copy()
+                    is List<*> -> (it as List<JKTreeElement>).map { it.copy() }
+                    else -> error("Tree is corrupted")
+                }
+            }
+
+        deepClonedChildren.forEach { child ->
+            when (child) {
+                is JKTreeElement -> {
+                    child.detach(this)
+                    child.attach(cloned)
+                }
+                is List<*> -> (child as List<JKTreeElement>).forEach {
+                    it.detach(this)
+                    it.attach(cloned)
+                }
+            }
+        }
+        cloned.children = deepClonedChildren.toMutableList()
+        return cloned
+    }
+}
+
+abstract class JKAnnotationMemberValue : JKTreeElement()
+
+interface PsiOwner {
+    var psi: PsiElement?
+}
+
+class PsiOwnerImpl(override var psi: PsiElement? = null) : PsiOwner
+
+interface JKTypeArgumentListOwner : JKNonCodeElementsListOwner {
+    var typeArgumentList: JKTypeArgumentList
+}
+
+interface JKTypeParameterListOwner : JKNonCodeElementsListOwner {
+    var typeParameterList: JKTypeParameterList
+}
+

@@ -238,8 +238,16 @@ private val processings: List<NamedPostProcessingGroup> = listOf(
     NamedPostProcessingGroup(
         "Inferring declarations nullability",
         listOf(
-            nullabilityProcessing,
-            clearUndefinedLabelsProcessing
+            InspectionLikeProcessingGroup(
+                processings = listOf(
+                    VarToValProcessing(),
+                    generalInspectionBasedProcessing(CanBeValInspection(ignoreNotUsedVals = false))
+                ),
+                runSingleTime = true
+            ),
+            NullabilityInferenceProcessing(),
+            MutabilityInferenceProcessing(),
+            clearUnknownLabelsProcessing
         )
     ),
     NamedPostProcessingGroup(
@@ -248,7 +256,7 @@ private val processings: List<NamedPostProcessingGroup> = listOf(
     ),
     NamedPostProcessingGroup(
         "Shortening fully-qualified references",
-        listOf(shortenReferencesProcessing)
+        listOf(ShortenReferenceProcessing())
     ),
     NamedPostProcessingGroup(
         "Converting POJOs to data classes",
@@ -278,7 +286,7 @@ private val processings: List<NamedPostProcessingGroup> = listOf(
         "Optimizing imports",
         listOf(
             optimizeImportsProcessing,
-            shortenReferencesProcessing
+            ShortenReferenceProcessing()
         )
     ),
     NamedPostProcessingGroup(

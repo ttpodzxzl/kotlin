@@ -1034,6 +1034,11 @@ public class BytecodeTextTestGenerated extends AbstractBytecodeTextTest {
             runTest("compiler/testData/codegen/bytecodeText/conditions/nonZeroCompareInWhile.kt");
         }
 
+        @TestMetadata("nullCompareConst.kt")
+        public void testNullCompareConst() throws Exception {
+            runTest("compiler/testData/codegen/bytecodeText/conditions/nullCompareConst.kt");
+        }
+
         @TestMetadata("nullCompareInDoWhile.kt")
         public void testNullCompareInDoWhile() throws Exception {
             runTest("compiler/testData/codegen/bytecodeText/conditions/nullCompareInDoWhile.kt");
@@ -1677,6 +1682,11 @@ public class BytecodeTextTestGenerated extends AbstractBytecodeTextTest {
             runTest("compiler/testData/codegen/bytecodeText/forLoop/forInCharSequence.kt");
         }
 
+        @TestMetadata("forInCharSequenceTypeParameter.kt")
+        public void testForInCharSequenceTypeParameter() throws Exception {
+            runTest("compiler/testData/codegen/bytecodeText/forLoop/forInCharSequenceTypeParameter.kt");
+        }
+
         @TestMetadata("forInDownToCharMinValue.kt")
         public void testForInDownToCharMinValue() throws Exception {
             runTest("compiler/testData/codegen/bytecodeText/forLoop/forInDownToCharMinValue.kt");
@@ -1888,6 +1898,11 @@ public class BytecodeTextTestGenerated extends AbstractBytecodeTextTest {
             @TestMetadata("forInCharSequenceIndices.kt")
             public void testForInCharSequenceIndices() throws Exception {
                 runTest("compiler/testData/codegen/bytecodeText/forLoop/forInIndices/forInCharSequenceIndices.kt");
+            }
+
+            @TestMetadata("forInCharSequenceTypeParameterIndices.kt")
+            public void testForInCharSequenceTypeParameterIndices() throws Exception {
+                runTest("compiler/testData/codegen/bytecodeText/forLoop/forInIndices/forInCharSequenceTypeParameterIndices.kt");
             }
 
             @TestMetadata("forInCollectionImplicitReceiverIndices.kt")
@@ -3139,6 +3154,11 @@ public class BytecodeTextTestGenerated extends AbstractBytecodeTextTest {
         public void testOptimizedMultifileClassFacadeMethods() throws Exception {
             runTest("compiler/testData/codegen/bytecodeText/multifileClasses/optimizedMultifileClassFacadeMethods.kt");
         }
+
+        @TestMetadata("privateFunctionName.kt")
+        public void testPrivateFunctionName() throws Exception {
+            runTest("compiler/testData/codegen/bytecodeText/multifileClasses/privateFunctionName.kt");
+        }
     }
 
     @TestMetadata("compiler/testData/codegen/bytecodeText/notNullAssertions")
@@ -3426,6 +3446,11 @@ public class BytecodeTextTestGenerated extends AbstractBytecodeTextTest {
         @TestMetadata("inComparableRangeLiteral.kt")
         public void testInComparableRangeLiteral() throws Exception {
             runTest("compiler/testData/codegen/bytecodeText/ranges/inComparableRangeLiteral.kt");
+        }
+
+        @TestMetadata("inMixedUnsignedRange.kt")
+        public void testInMixedUnsignedRange() throws Exception {
+            runTest("compiler/testData/codegen/bytecodeText/ranges/inMixedUnsignedRange.kt");
         }
 
         @TestMetadata("inNonMatchingRangeIntrinsified.kt")

@@ -13,13 +13,13 @@ import org.jetbrains.kotlin.backend.common.lower.matchers.createIrCallMatcher
 import org.jetbrains.kotlin.backend.common.lower.matchers.singleArgumentExtension
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
-import org.jetbrains.kotlin.ir.util.isPrimitiveArray
-import org.jetbrains.kotlin.ir.util.properties
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -153,7 +153,8 @@ internal class UntilHandler(private val context: CommonBackendContext, private v
                     it == null && isAdditionalNotEmptyConditionNeeded(receiverValue.type, untilArg.type) ->
                         // Condition is needed and untilArg is non-const.
                         // Build the additional "not empty" condition: `untilArg != MIN_VALUE`.
-                        irNotEquals(untilArgExpression, minValueIrConst)
+                        // Make sure to copy untilArgExpression as it is also used in `last`.
+                        irNotEquals(untilArgExpression.deepCopyWithSymbols(), minValueIrConst)
                     it == minValueAsLong ->
                         // Hardcode "false" as additional condition so that the progression is considered empty.
                         // The entire lowered loop becomes a candidate for dead code elimination, depending on backend.
@@ -219,22 +220,16 @@ internal class UntilHandler(private val context: CommonBackendContext, private v
 }
 
 /** Builds a [HeaderInfo] for progressions built using the `indices` extension property. */
-internal class IndicesHandler(private val context: CommonBackendContext) : ProgressionHandler {
+internal abstract class IndicesHandler(protected val context: CommonBackendContext) : ProgressionHandler {
 
-    override val matcher = SimpleCalleeMatcher {
-        // TODO: Handle Collection<*>.indices
-        // TODO: Handle CharSequence.indices
-        extensionReceiver { it != null && it.type.run { isArray() || isPrimitiveArray() } }
-        fqName { it == FqName("kotlin.collections.<get-indices>") }
-        parameterCount { it == 0 }
-    }
+    // TODO: Handle Collection<*>.indices
 
     override fun build(expression: IrCall, data: ProgressionType, scopeOwner: IrSymbol): HeaderInfo? =
         with(context.createIrBuilder(scopeOwner, expression.startOffset, expression.endOffset)) {
             // `last = array.size - 1` (last is inclusive) for the loop `for (i in array.indices)`.
-            val arraySizeProperty = expression.extensionReceiver!!.type.getClass()!!.properties.first { it.name.asString() == "size" }
-            val last = irCall(arraySizeProperty.getter!!).apply {
-                dispatchReceiver = expression.extensionReceiver
+            val receiver = expression.extensionReceiver!!
+            val last = irCall(receiver.type.sizePropertyGetter).apply {
+                dispatchReceiver = receiver
             }.decrement()
 
             ProgressionHeaderInfo(
@@ -246,6 +241,36 @@ internal class IndicesHandler(private val context: CommonBackendContext) : Progr
                 direction = ProgressionDirection.INCREASING
             )
         }
+
+    abstract val IrType.sizePropertyGetter: IrSimpleFunction
+}
+
+internal class ArrayIndicesHandler(context: CommonBackendContext) : IndicesHandler(context) {
+    override val matcher = SimpleCalleeMatcher {
+        extensionReceiver { it != null && it.type.run { isArray() || isPrimitiveArray() } }
+        fqName { it == FqName("kotlin.collections.<get-indices>") }
+        parameterCount { it == 0 }
+    }
+
+    override val IrType.sizePropertyGetter
+        get() = getClass()!!.properties.first { it.name.asString() == "size" }.getter!!
+}
+
+internal class CharSequenceIndicesHandler(context: CommonBackendContext) : IndicesHandler(context) {
+
+    override val matcher = SimpleCalleeMatcher {
+        extensionReceiver { it != null && it.type.run { isSubtypeOfClass(context.ir.symbols.charSequence)} }
+        fqName { it == FqName("kotlin.text.<get-indices>") }
+        parameterCount { it == 0 }
+    }
+
+    // The lowering operates on subtypes of CharSequence. Therefore, the IrType could be
+    // a type parameter bounded by CharSequence. When that is the case, we cannot get
+    // the class from the type and instead uses the CharSequence getter.
+    override val IrType.sizePropertyGetter
+        get() = getClass()?.properties?.first { it.name.asString() == "length" }?.let {
+            it.getter!!
+        } ?: context.ir.symbols.charSequence.getPropertyGetter("length")!!.owner
 }
 
 /** Builds a [HeaderInfo] for calls to reverse an iterable. */
@@ -326,13 +351,10 @@ internal abstract class IndexedGetIterationHandler(protected val context: Common
             // This also ensures that the semantics of re-assignment of array variables used in the loop is consistent with the semantics
             // proposed in https://youtrack.jetbrains.com/issue/KT-21354.
             val arrayReference = scope.createTemporaryVariable(
-                expression, nameHint = "indexedObject",
-                origin = IrDeclarationOrigin.FOR_LOOP_IMPLICIT_VARIABLE
+                expression, nameHint = "indexedObject"
             )
 
-            // `last = array.size` (last is exclusive) for the loop `for (i in array.indices)`.
-            val arraySizeProperty = arrayReference.type.getClass()!!.properties.first { it.name.asString() == sizePropertyName() }
-            val last = irCall(arraySizeProperty.getter!!).apply {
+            val last = irCall(expression.type.sizePropertyGetter).apply {
                 dispatchReceiver = irGet(arrayReference)
             }
 
@@ -340,23 +362,40 @@ internal abstract class IndexedGetIterationHandler(protected val context: Common
                 first = irInt(0),
                 last = last,
                 step = irInt(1),
-                objectVariable = arrayReference
+                objectVariable = arrayReference,
+                expressionHandler = this@IndexedGetIterationHandler
             )
         }
 
-    abstract fun sizePropertyName() : String
+    abstract val IrType.sizePropertyGetter: IrSimpleFunction
+
+    abstract val IrType.getFunction: IrSimpleFunction
 }
 
 /** Builds a [HeaderInfo] for arrays. */
 internal class ArrayIterationHandler(context: CommonBackendContext) : IndexedGetIterationHandler(context) {
     override fun match(expression: IrExpression) = expression.type.run { isArray() || isPrimitiveArray() }
 
-    override fun sizePropertyName(): String = "size"
+    override val IrType.sizePropertyGetter
+        get() = getClass()!!.properties.first { it.name.asString() == "size" }.getter!!
+
+    override val IrType.getFunction
+        get() = getClass()!!.functions.first { it.name.asString() == "get" }
 }
 
 /** Builds a [HeaderInfo] for iteration over characters in a `CharacterSequence`. */
 internal class CharSequenceIterationHandler(context: CommonBackendContext) : IndexedGetIterationHandler(context) {
     override fun match(expression: IrExpression) = expression.type.isSubtypeOfClass(context.ir.symbols.charSequence)
 
-    override fun sizePropertyName(): String = "length"
+    // The lowering operates on subtypes of CharSequence. Therefore, the IrType could be
+    // a type parameter bounded by CharSequence. When that is the case, we cannot get
+    // the class from the type and instead uses the CharSequence getter and function.
+    override val IrType.sizePropertyGetter
+        get() = getClass()?.properties?.first { it.name.asString() == "length" }?.let {
+            it.getter!!
+        } ?: context.ir.symbols.charSequence.getPropertyGetter("length")!!.owner
+
+    override val IrType.getFunction
+        get() = getClass()?.functions?.first { it.name.asString() == "get" }
+            ?: context.ir.symbols.charSequence.getSimpleFunction("get")!!.owner
 }

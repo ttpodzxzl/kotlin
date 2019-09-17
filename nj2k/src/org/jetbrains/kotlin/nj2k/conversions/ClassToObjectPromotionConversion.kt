@@ -6,14 +6,13 @@
 package org.jetbrains.kotlin.nj2k.conversions
 
 import org.jetbrains.kotlin.nj2k.NewJ2kConverterContext
+import org.jetbrains.kotlin.nj2k.declarationList
 import org.jetbrains.kotlin.nj2k.getCompanion
+import org.jetbrains.kotlin.nj2k.psi
 import org.jetbrains.kotlin.nj2k.tree.*
-import org.jetbrains.kotlin.nj2k.tree.impl.JKAnnotationListImpl
-import org.jetbrains.kotlin.nj2k.tree.impl.JKClassImpl
-import org.jetbrains.kotlin.nj2k.tree.impl.JKModalityModifierElementImpl
-import org.jetbrains.kotlin.nj2k.tree.impl.psi
 
-class ClassToObjectPromotionConversion(private val context: NewJ2kConverterContext) : RecursiveApplicableConversionBase() {
+
+class ClassToObjectPromotionConversion(context: NewJ2kConverterContext) : RecursiveApplicableConversionBase(context) {
     override fun applyToElement(element: JKTreeElement): JKTreeElement {
         if (element is JKClass && element.classKind == JKClass.ClassKind.CLASS) {
             val companion = element.getCompanion() ?: return recurse(element)
@@ -37,7 +36,7 @@ class ClassToObjectPromotionConversion(private val context: NewJ2kConverterConte
                 companion.invalidate()
                 element.invalidate()
                 return recurse(
-                    JKClassImpl(
+                    JKClass(
                         element.name,
                         element.inheritance,
                         JKClass.ClassKind.OBJECT,
@@ -49,10 +48,10 @@ class ClassToObjectPromotionConversion(private val context: NewJ2kConverterConte
                                 it is JKClass && it.classKind != JKClass.ClassKind.COMPANION
                             }.map { it.detached(element.classBody) }
                         },
-                        JKAnnotationListImpl(),
+                        JKAnnotationList(),
                         element.otherModifierElements,
                         element.visibilityElement,
-                        JKModalityModifierElementImpl(Modality.FINAL)
+                        JKModalityModifierElement(Modality.FINAL)
                     ).withNonCodeElementsFrom(element)
                 )
             }

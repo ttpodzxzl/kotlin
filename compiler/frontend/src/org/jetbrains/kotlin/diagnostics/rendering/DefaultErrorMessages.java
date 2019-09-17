@@ -476,7 +476,7 @@ public class DefaultErrorMessages {
         MAP.put(ITERATOR_ON_NULLABLE, "Not nullable value required to call an 'iterator()' method on for-loop range");
         MAP.put(ITERATOR_AMBIGUITY, "Method ''iterator()'' is ambiguous for this expression: {0}", AMBIGUOUS_CALLS);
 
-        MAP.put(DELEGATE_SPECIAL_FUNCTION_MISSING, "Missing ''{0}'' method on delegate of type ''{1}''", STRING, RENDER_TYPE);
+        MAP.put(DELEGATE_SPECIAL_FUNCTION_MISSING, "Type ''{1}'' has no method ''{0}'' and thus it cannot serve as a {2}", STRING, RENDER_TYPE, STRING);
         MAP.put(DELEGATE_SPECIAL_FUNCTION_AMBIGUITY, "Overload resolution ambiguity on method ''{0}'': {1}",  STRING, AMBIGUOUS_CALLS);
         MAP.put(DELEGATE_SPECIAL_FUNCTION_NONE_APPLICABLE, "Property delegate must have a ''{0}'' method. None of the following functions is suitable: {1}",
                 STRING, AMBIGUOUS_CALLS);
@@ -951,7 +951,7 @@ public class DefaultErrorMessages {
         MAP.put(DECLARATION_CANT_BE_INLINED, "'inline' modifier is not allowed on virtual members. Only private or final members can be inlined");
         MAP.put(OVERRIDE_BY_INLINE, "Override by an inline function");
         MAP.put(REIFIED_TYPE_PARAMETER_IN_OVERRIDE, "Override by a function with reified type parameter");
-        MAP.put(NOTHING_TO_INLINE, "Expected performance impact of inlining ''{0}'' is insignificant. Inlining works best for functions with parameters of functional types", SHORT_NAMES_IN_TYPES);
+        MAP.put(NOTHING_TO_INLINE, "Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of functional types");
         MAP.put(USAGE_IS_NOT_INLINABLE, "Illegal usage of inline-parameter ''{0}'' in ''{1}''. Add ''noinline'' modifier to the parameter declaration", ELEMENT_TEXT, SHORT_NAMES_IN_TYPES);
         MAP.put(NULLABLE_INLINE_PARAMETER, "Inline-parameter ''{0}'' of ''{1}'' must not be nullable. Add ''noinline'' modifier to the parameter declaration or make its type not nullable", ELEMENT_TEXT, SHORT_NAMES_IN_TYPES);
         MAP.put(RECURSION_IN_INLINE, "Inline function ''{1}'' cannot be recursive", ELEMENT_TEXT, SHORT_NAMES_IN_TYPES);

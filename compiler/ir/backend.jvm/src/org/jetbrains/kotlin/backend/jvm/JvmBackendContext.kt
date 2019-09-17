@@ -16,7 +16,10 @@ import org.jetbrains.kotlin.backend.jvm.intrinsics.IrIntrinsicMethods
 import org.jetbrains.kotlin.backend.jvm.lower.inlineclasses.InlineClassAbi
 import org.jetbrains.kotlin.codegen.ClassBuilder
 import org.jetbrains.kotlin.codegen.state.GenerationState
+import org.jetbrains.kotlin.descriptors.ClassConstructorDescriptor
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
+import org.jetbrains.kotlin.descriptors.FunctionDescriptor
+import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
@@ -24,6 +27,7 @@ import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrLocalDelegatedPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.ReferenceSymbolTable
 import org.jetbrains.kotlin.ir.util.SymbolTable
@@ -79,6 +83,7 @@ class JvmBackendContext(
     val suspendFunctionContinuations = mutableMapOf<IrFunction, IrClass>()
     val suspendLambdaToOriginalFunctionMap = mutableMapOf<IrClass, IrFunction>()
     val continuationClassBuilders = mutableMapOf<IrClass, ClassBuilder>()
+    val suspendFunctionViews = mutableMapOf<IrFunction, IrFunction>()
 
     val staticDefaultStubs = mutableMapOf<IrFunctionSymbol, IrFunction>()
 
@@ -86,8 +91,20 @@ class JvmBackendContext(
         val descriptor = state.module.getPackage(fqName.parent()).memberScope.getContributedClassifier(
             fqName.shortName(), NoLookupLocation.FROM_BACKEND
         ) as ClassDescriptor? ?: error("Class is not found: $fqName")
-        return symbolTable.referenceClass(descriptor)
+        return referenceClass(descriptor)
     }
+
+    internal fun referenceClass(descriptor: ClassDescriptor): IrClassSymbol =
+        symbolTable.referenceClass(descriptor)
+
+    internal fun referenceTypeParameter(descriptor: TypeParameterDescriptor): IrTypeParameterSymbol =
+        symbolTable.referenceTypeParameter(descriptor)
+
+    internal fun referenceFunction(descriptor: FunctionDescriptor): IrFunctionSymbol =
+        if (descriptor is ClassConstructorDescriptor)
+            symbolTable.referenceConstructor(descriptor)
+        else
+            symbolTable.referenceSimpleFunction(descriptor)
 
     override fun log(message: () -> String) {
         /*TODO*/

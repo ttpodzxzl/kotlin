@@ -829,7 +829,7 @@ public interface Errors {
     DiagnosticFactory0<KtExpression> ITERATOR_ON_NULLABLE = DiagnosticFactory0.create(ERROR);
     DiagnosticFactory1<PsiElement, Collection<? extends ResolvedCall<?>>> ITERATOR_AMBIGUITY = DiagnosticFactory1.create(ERROR);
 
-    DiagnosticFactory2<KtExpression, String, KotlinType> DELEGATE_SPECIAL_FUNCTION_MISSING = DiagnosticFactory2.create(ERROR);
+    DiagnosticFactory3<KtExpression, String, KotlinType, String> DELEGATE_SPECIAL_FUNCTION_MISSING = DiagnosticFactory3.create(ERROR);
     DiagnosticFactory2<KtExpression, String, Collection<? extends ResolvedCall<?>>> DELEGATE_SPECIAL_FUNCTION_AMBIGUITY = DiagnosticFactory2.create(ERROR);
     DiagnosticFactory2<KtExpression, String, Collection<? extends ResolvedCall<?>>> DELEGATE_SPECIAL_FUNCTION_NONE_APPLICABLE = DiagnosticFactory2.create(ERROR);
     DiagnosticFactory3<KtExpression, String, KotlinType, KotlinType> DELEGATE_SPECIAL_FUNCTION_RETURN_TYPE_MISMATCH = DiagnosticFactory3.create(ERROR);
@@ -1060,7 +1060,7 @@ public interface Errors {
     DiagnosticFactory2<KtElement, DeclarationDescriptor, DeclarationDescriptor> PRIVATE_CLASS_MEMBER_FROM_INLINE = DiagnosticFactory2.create(ERROR, CALL_ELEMENT);
     DiagnosticFactory1<KtElement, KtElement> NON_LOCAL_RETURN_NOT_ALLOWED = DiagnosticFactory1.create(ERROR, CALL_ELEMENT);
     DiagnosticFactory1<KtDeclaration, String> NOT_YET_SUPPORTED_IN_INLINE = DiagnosticFactory1.create(ERROR, NOT_SUPPORTED_IN_INLINE_MOST_RELEVANT);
-    DiagnosticFactory1<PsiElement, DeclarationDescriptor> NOTHING_TO_INLINE = DiagnosticFactory1.create(WARNING);
+    DiagnosticFactory0<PsiElement> NOTHING_TO_INLINE = DiagnosticFactory0.create(WARNING);
     DiagnosticFactory2<KtElement, KtExpression, DeclarationDescriptor> USAGE_IS_NOT_INLINABLE = DiagnosticFactory2.create(ERROR);
     DiagnosticFactory2<KtElement, KtElement, DeclarationDescriptor> NULLABLE_INLINE_PARAMETER = DiagnosticFactory2.create(ERROR);
     DiagnosticFactory2<KtElement, KtElement, DeclarationDescriptor> RECURSION_IN_INLINE = DiagnosticFactory2.create(ERROR);

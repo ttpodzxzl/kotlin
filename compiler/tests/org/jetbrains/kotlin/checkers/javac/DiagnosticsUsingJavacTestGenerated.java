@@ -101,9 +101,14 @@ public class DiagnosticsUsingJavacTestGenerated extends AbstractDiagnosticsUsing
             runTest("compiler/testData/diagnostics/tests/BreakContinue.kt");
         }
 
-        @TestMetadata("BreakContinueInWhen.kt")
-        public void testBreakContinueInWhen() throws Exception {
-            runTest("compiler/testData/diagnostics/tests/BreakContinueInWhen.kt");
+        @TestMetadata("BreakContinueInWhen_after.kt")
+        public void testBreakContinueInWhen_after() throws Exception {
+            runTest("compiler/testData/diagnostics/tests/BreakContinueInWhen_after.kt");
+        }
+
+        @TestMetadata("BreakContinueInWhen_before.kt")
+        public void testBreakContinueInWhen_before() throws Exception {
+            runTest("compiler/testData/diagnostics/tests/BreakContinueInWhen_before.kt");
         }
 
         @TestMetadata("Builders.kt")
@@ -2501,6 +2506,11 @@ public class DiagnosticsUsingJavacTestGenerated extends AbstractDiagnosticsUsing
                 @TestMetadata("multipleOutersAndMultipleCallableReferences.kt")
                 public void testMultipleOutersAndMultipleCallableReferences() throws Exception {
                     runTest("compiler/testData/diagnostics/tests/callableReference/resolve/multipleOutersAndMultipleCallableReferences.kt");
+                }
+
+                @TestMetadata("noAmbiguityBetweenTopLevelAndMemberProperty.kt")
+                public void testNoAmbiguityBetweenTopLevelAndMemberProperty() throws Exception {
+                    runTest("compiler/testData/diagnostics/tests/callableReference/resolve/noAmbiguityBetweenTopLevelAndMemberProperty.kt");
                 }
 
                 @TestMetadata("noFakeDescriptorForObject.kt")
@@ -9052,6 +9062,11 @@ public class DiagnosticsUsingJavacTestGenerated extends AbstractDiagnosticsUsing
             @TestMetadata("CheckJavaVisibility.kt")
             public void testCheckJavaVisibility() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/imports/CheckJavaVisibility.kt");
+            }
+
+            @TestMetadata("CheckJavaVisibility2.kt")
+            public void testCheckJavaVisibility2() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/imports/CheckJavaVisibility2.kt");
             }
 
             @TestMetadata("CheckVisibility.kt")
@@ -17060,6 +17075,11 @@ public class DiagnosticsUsingJavacTestGenerated extends AbstractDiagnosticsUsing
             @TestMetadata("kt2768.kt")
             public void testKt2768() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/regressions/kt2768.kt");
+            }
+
+            @TestMetadata("kt28001.kt")
+            public void testKt28001() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/regressions/kt28001.kt");
             }
 
             @TestMetadata("kt282.kt")

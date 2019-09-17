@@ -296,14 +296,8 @@
     <projectService serviceInterface="org.jetbrains.kotlin.scripting.definitions.ScriptDependenciesProvider"
                     serviceImplementation="org.jetbrains.kotlin.idea.core.script.IdeScriptDependenciesProvider"/>
 
-    <projectService serviceInterface="org.jetbrains.kotlin.idea.core.script.ScriptDependenciesManager"
-                    serviceImplementation="org.jetbrains.kotlin.idea.core.script.ScriptDependenciesManager"/>
-
-    <projectService serviceInterface="org.jetbrains.kotlin.idea.core.script.ScriptsCompilationConfigurationCache"
-                    serviceImplementation="org.jetbrains.kotlin.idea.core.script.ScriptsCompilationConfigurationCache"/>
-
-    <projectService serviceInterface="org.jetbrains.kotlin.idea.core.script.ScriptsCompilationConfigurationUpdater"
-                    serviceImplementation="org.jetbrains.kotlin.idea.core.script.ScriptsCompilationConfigurationUpdater"/>
+    <projectService serviceInterface="org.jetbrains.kotlin.idea.core.script.ScriptConfigurationManager"
+                    serviceImplementation="org.jetbrains.kotlin.idea.core.script.ScriptConfigurationManagerImpl"/>
 
     <projectService serviceInterface="org.jetbrains.kotlin.scripting.resolve.ScriptReportSink"
                     serviceImplementation="org.jetbrains.kotlin.idea.core.script.IdeScriptReportSink"/>
@@ -514,6 +508,8 @@
                                                   implementationClass="org.jetbrains.kotlin.idea.codeInsight.postfix.KtPostfixTemplateProvider"/>
 
     <codeInsight.linkHandler prefix="#kotlinClass/" handlerClass="org.jetbrains.kotlin.idea.highlighter.markers.KotlinClassTooltipLinkHandler"/>
+
+    <codeInsight.nonBlockingContextChecker implementation="org.jetbrains.kotlin.idea.inspections.blockingCallsDetection.CoroutineNonBlockingContextChecker"/>
 
     <defaultHighlightingSettingProvider language="kotlin" implementation="org.jetbrains.kotlin.idea.highlighter.KotlinDefaultHighlightingSettingsProvider"/>
 
