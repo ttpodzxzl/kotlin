@@ -3,12 +3,12 @@ plugins {
 }
 
 repositories {
-    mavenLocal()
+    maven("https://kotlin.bintray.com/dukat")
 }
 
 dependencies {
     implementation(kotlinStdlib())
-    implementation("org.jetbrains.dukat:dukat:0.0.16")
+    implementation("org.jetbrains.dukat:dukat:0.0.17")
     implementation("org.jsoup:jsoup:1.8.2")
 
     testCompile(projectTests(":idea"))
