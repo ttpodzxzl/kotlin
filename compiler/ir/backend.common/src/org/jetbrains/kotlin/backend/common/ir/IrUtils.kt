@@ -515,8 +515,7 @@ fun createStaticFunctionWithReceivers(
     oldFunction: IrFunction,
     dispatchReceiverType: IrType? = oldFunction.dispatchReceiverParameter?.type,
     origin: IrDeclarationOrigin = oldFunction.origin,
-    modality: Modality = Modality.FINAL,
-    copyBody: Boolean = true
+    modality: Modality = Modality.FINAL
 ): IrSimpleFunction {
     val descriptor = WrappedSimpleFunctionDescriptor(Annotations.EMPTY, oldFunction.descriptor.source)
     return IrFunctionImpl(
@@ -552,10 +551,6 @@ fun createStaticFunctionWithReceivers(
         valueParameters.addAll(listOfNotNull(dispatchReceiver, extensionReceiver) +
                                        oldFunction.valueParameters.map { it.copyTo(this, index = it.index + offset) }
         )
-
-        if (copyBody) {
-            copyBodyToStatic(oldFunction, this)
-        }
 
         metadata = oldFunction.metadata
     }
