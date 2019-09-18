@@ -1,4 +1,4 @@
-// !LANGUAGE: -NewInference +AllowMixedNamedArgumentWithPosition
+// !LANGUAGE: -NewInference +MixedNamedArgumentsInTheirOwnPosition
 // !DIAGNOSTICS: -UNUSED_PARAMETER
 // SKIP_TXT
 

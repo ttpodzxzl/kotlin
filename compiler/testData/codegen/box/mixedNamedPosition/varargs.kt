@@ -1,4 +1,4 @@
-// !LANGUAGE: +NewInference +AllowMixedNamedArgumentWithPosition
+// !LANGUAGE: +NewInference +MixedNamedArgumentsInTheirOwnPosition
 
 fun foo1(
     vararg p1: Int,
