@@ -30,7 +30,7 @@ class ArgumentsToParametersMapper(
 ) {
 
     private val allowMixedNamedAndPositionArguments =
-        languageVersionSettings.supportsFeature(LanguageFeature.AllowMixedNamedArgumentWithPosition)
+        languageVersionSettings.supportsFeature(LanguageFeature.MixedNamedArgumentsInTheirOwnPosition)
 
     data class ArgumentMapping(
         // This map should be ordered by arguments as written, e.g.:
@@ -80,7 +80,7 @@ class ArgumentsToParametersMapper(
         private var nameToParameter: Map<Name, ValueParameterDescriptor>? = null
         private var varargArguments: MutableList<KotlinCallArgument>? = null
 
-        private var currentParameterIndex = 0
+        private var currentPositionedParameterIndex = 0
 
         private fun addDiagnostic(diagnostic: KotlinCallDiagnostic) {
             if (diagnostics == null) {
@@ -108,31 +108,31 @@ class ArgumentsToParametersMapper(
         private enum class State {
             POSITION_ARGUMENTS,
             VARARG_POSITION,
-            NAMED_ARGUMENT
+            NAMED_ONLY_ARGUMENTS
         }
 
         private fun completeVarargPositionArguments() {
             assert(state == State.VARARG_POSITION) { "Incorrect state: $state" }
-            val parameter = parameters[currentParameterIndex]
+            val parameter = parameters[currentPositionedParameterIndex]
             result.put(parameter.original, ResolvedCallArgument.VarargArgument(varargArguments!!))
-            currentParameterIndex++
+            currentPositionedParameterIndex++
         }
 
         // return true, if it was mapped to vararg parameter
         private fun processPositionArgument(argument: KotlinCallArgument): Boolean {
-            if (state == State.NAMED_ARGUMENT) {
+            if (state == State.NAMED_ONLY_ARGUMENTS) {
                 addDiagnostic(MixingNamedAndPositionArguments(argument))
                 return false
             }
 
-            val parameter = parameters.getOrNull(currentParameterIndex)
+            val parameter = parameters.getOrNull(currentPositionedParameterIndex)
             if (parameter == null) {
                 addDiagnostic(TooManyArguments(argument, descriptor))
                 return false
             }
 
             if (!parameter.isVararg) {
-                currentParameterIndex++
+                currentPositionedParameterIndex++
 
                 result.put(parameter.original, ResolvedCallArgument.SimpleArgument(argument))
                 return false
@@ -160,9 +160,23 @@ class ArgumentsToParametersMapper(
 
             result[parameter.original] = ResolvedCallArgument.SimpleArgument(argument)
 
-            if (allowMixedNamedAndPositionArguments && parameter.original == parameters.getOrNull(currentParameterIndex)?.original) {
-                state = State.POSITION_ARGUMENTS
-                currentParameterIndex++
+            if (allowMixedNamedAndPositionArguments) {
+                val currentPositionParameter = parameters.getOrNull(currentPositionedParameterIndex)?.original
+                val nextPositionParameter = parameters.getOrNull(currentPositionedParameterIndex + 1)?.original
+
+                when {
+                    currentPositionParameter == parameter.original -> {
+                        state = State.POSITION_ARGUMENTS
+                        currentPositionedParameterIndex++
+                    }
+                    // This branch is only work in case of no arguments for the previois vararg parameter
+                    // In that case, `completeVarargPositionArguments` is not being called before processing the named argument
+                    currentPositionParameter?.isVararg == true && parameter.original == nextPositionParameter -> {
+                        state = State.POSITION_ARGUMENTS
+                        // skip empty vararg and named positioned argument
+                        currentPositionedParameterIndex += 2
+                    }
+                }
             }
         }
 
@@ -213,7 +227,7 @@ class ArgumentsToParametersMapper(
                     if (state == State.VARARG_POSITION) {
                         completeVarargPositionArguments()
                     }
-                    state = State.NAMED_ARGUMENT
+                    state = State.NAMED_ONLY_ARGUMENTS
 
                     processNamedArgument(argument, argumentName)
                 }
