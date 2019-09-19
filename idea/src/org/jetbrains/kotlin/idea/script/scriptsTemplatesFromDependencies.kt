@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.idea.script
 
 import com.intellij.ProjectTopics
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.OrderEnumerator
@@ -14,7 +15,10 @@ import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.core.script.loadDefinitionsFromTemplates
 import org.jetbrains.kotlin.idea.util.projectStructure.allModules
-import org.jetbrains.kotlin.scripting.definitions.*
+import org.jetbrains.kotlin.scripting.definitions.SCRIPT_DEFINITION_MARKERS_EXTENSION_WITH_DOT
+import org.jetbrains.kotlin.scripting.definitions.SCRIPT_DEFINITION_MARKERS_PATH
+import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.getEnvironment
 import java.io.File
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.write
@@ -54,7 +58,7 @@ class ScriptTemplatesFromDependenciesProvider(project: Project) : AsyncScriptDef
             val hostConfiguration = ScriptingHostConfiguration(defaultJvmScriptingHostConfiguration) {
                 getEnvironment {
                     mapOf(
-                        "projectRoot" to (project.basePath ?: project.baseDir.canonicalPath)?.let(::File)
+                        "projectRoot" to (project.basePath ?: project.guessProjectDir()?.canonicalPath)?.let(::File)
                     )
                 }
             }
