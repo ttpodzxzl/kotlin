@@ -71,6 +71,8 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
     javac: JavacWrapper
 ) : SymbolBasedType<T>(typeMirror, javac), JavaClassifierType {
 
+    private val isFake get() = (classifier as? SymbolBasedClass)?.fake == true
+
     override val classifier: JavaClassifier?
             by lazy {
                 when (typeMirror.kind) {
@@ -78,6 +80,7 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
                         // try to find cached javaClass
                         val classId = symbol.computeClassId()
                         classId?.let { javac.findClass(it) }
+                            ?: SymbolBasedClass(symbol, javac, classId, symbol.classfile, fake = true)
                     }
                     TypeKind.TYPEVAR -> SymbolBasedTypeParameter((typeMirror as TypeVariable).asElement() as TypeParameterElement, javac)
                     else -> null
@@ -106,6 +109,7 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
     override val isRaw: Boolean
         get() = when {
             typeMirror !is DeclaredType -> false
+            isFake -> false
             (classifier as? JavaClass)?.typeParameters?.isEmpty() == true -> false
             else -> typeMirror.typeArguments.isEmpty() || (classifier as? JavaClass)?.typeParameters?.size != typeMirror.typeArguments.size
         }
@@ -117,7 +121,7 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
         get() = typeMirror.toString()
 
     override val isDeprecatedInJavaDoc: Boolean
-        get() = classifier != null && super.isDeprecatedInJavaDoc
+        get() = !isFake && super.isDeprecatedInJavaDoc
 }
 
 class SymbolBasedWildcardType(

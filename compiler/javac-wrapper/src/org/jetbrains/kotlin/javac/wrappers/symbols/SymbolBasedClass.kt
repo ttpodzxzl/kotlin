@@ -39,7 +39,8 @@ class SymbolBasedClass(
         element: TypeElement,
         javac: JavacWrapper,
         override val classId: ClassId?,
-        val file: JavaFileObject?
+        val file: JavaFileObject?,
+        internal val fake: Boolean = false
 ) : SymbolBasedClassifier<TypeElement>(element, javac), JavaClassWithClassId {
 
     override val name: Name
