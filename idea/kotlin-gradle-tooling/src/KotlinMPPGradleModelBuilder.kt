@@ -378,6 +378,14 @@ class KotlinMPPGradleModelBuilder : ModelBuilderService {
             buildCompilationDependencies(gradleCompilation, classifier, sourceSetMap, dependencyResolver, project, dependencyMapper)
         val kotlinTaskProperties = getKotlinTaskProperties(compileKotlinTask)
 
+        // Get konanTarget (for native compilations only).
+        val konanTarget = compilationClass.getMethodOrNull("getKonanTarget")?.let { getKonanTarget ->
+            val konanTarget = getKonanTarget.invoke(gradleCompilation)
+            konanTarget.javaClass.getMethodOrNull("getName")?.let {
+                it.invoke(konanTarget) as? String
+            }
+        }
+
         return KotlinCompilationImpl(
             gradleCompilation.name,
             kotlinSourceSets,
@@ -385,7 +393,8 @@ class KotlinMPPGradleModelBuilder : ModelBuilderService {
             output,
             arguments,
             dependencyClasspath.toTypedArray(),
-            kotlinTaskProperties
+            kotlinTaskProperties,
+            konanTarget
         )
     }
 
