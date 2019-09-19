@@ -78,7 +78,6 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
                     // try to find cached javaClass
                     val classId = symbol.computeClassId()
                     classId?.let { javac.findClass(it) }
-                    ?: SymbolBasedClass(symbol, javac, classId, symbol.classfile)
                 }
                 TypeKind.TYPEVAR -> SymbolBasedTypeParameter((typeMirror as TypeVariable).asElement() as TypeParameterElement, javac)
                 else -> null
@@ -117,6 +116,8 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
     override val presentableText: String
         get() = typeMirror.toString()
 
+    override val isDeprecatedInJavaDoc: Boolean
+        get() = classifier != null && super.isDeprecatedInJavaDoc
 }
 
 class SymbolBasedWildcardType(
