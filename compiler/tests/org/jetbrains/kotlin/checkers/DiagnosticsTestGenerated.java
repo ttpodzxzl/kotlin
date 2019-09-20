@@ -13241,6 +13241,11 @@ public class DiagnosticsTestGenerated extends AbstractDiagnosticsTest {
                 runTest("compiler/testData/diagnostics/tests/multimodule/kt14249.kt");
             }
 
+            @TestMetadata("nonTransitive.kt")
+            public void testNonTransitive() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/multimodule/nonTransitive.kt");
+            }
+
             @TestMetadata("packagePrivate.kt")
             public void testPackagePrivate() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/multimodule/packagePrivate.kt");
