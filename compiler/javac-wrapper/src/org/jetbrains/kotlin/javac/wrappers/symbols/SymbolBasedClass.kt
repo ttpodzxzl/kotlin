@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.javac.wrappers.symbols
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.CommonClassNames
 import com.intellij.psi.search.SearchScope
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.javac.JavaClassWithClassId
 import org.jetbrains.kotlin.javac.JavacWrapper
@@ -40,32 +41,33 @@ class SymbolBasedClass(
     javac: JavacWrapper,
     override val classId: ClassId?,
     val file: JavaFileObject?,
-    internal val fake: Boolean = false
+    internal val isFake: Boolean = false
 ) : SymbolBasedClassifier<TypeElement>(element, javac), JavaClassWithClassId {
 
     override val name: Name
         get() = Name.identifier(element.simpleName.toString())
 
     override val isAbstract: Boolean
-        get() = element.isAbstract
+        get() = isFake || element.isAbstract
 
     override val isStatic: Boolean
-        get() = element.isStatic
+        get() = !isFake && element.isStatic
 
     override val isFinal: Boolean
-        get() = element.isFinal
+        get() = !isFake && element.isFinal
 
     override val visibility: Visibility
-        get() = element.getVisibility()
+        get() = if (isFake) Visibilities.PUBLIC else element.getVisibility()
 
     override val typeParameters: List<JavaTypeParameter>
-            by lazy { element.typeParameters.map { SymbolBasedTypeParameter(it, javac) } }
+            by lazy { if (isFake) emptyList() else element.typeParameters.map { SymbolBasedTypeParameter(it, javac) } }
 
     override val fqName: FqName
         get() = FqName(element.qualifiedName.toString())
 
     override val supertypes: Collection<JavaClassifierType>
             by lazy {
+                if (isFake) return@lazy emptyList()
                 arrayListOf<TypeMirror>()
                     .apply {
                         element.superclass.takeIf { it !is NoType }?.let(this::add)
@@ -81,6 +83,7 @@ class SymbolBasedClass(
 
     val innerClasses: Map<Name, JavaClass>
             by lazy {
+                if (isFake) return@lazy emptyMap()
                 enclosedElements
                     .filterIsInstance(TypeElement::class.java)
                     .map { SymbolBasedClass(it, javac, classId?.createNestedClassId(Name.identifier(it.simpleName.toString())), file) }
@@ -94,25 +97,26 @@ class SymbolBasedClass(
                         it as TypeElement,
                         javac,
                         classId?.outerClassId,
-                        file
+                        file,
+                        isFake
                     )
                 }
             }
 
     override val isInterface: Boolean
-        get() = element.kind == ElementKind.INTERFACE
+        get() = isFake || element.kind == ElementKind.INTERFACE
 
     override val isAnnotationType: Boolean
-        get() = element.kind == ElementKind.ANNOTATION_TYPE
+        get() = !isFake && element.kind == ElementKind.ANNOTATION_TYPE
 
     override val isEnum: Boolean
-        get() = element.kind == ElementKind.ENUM
+        get() = !isFake && element.kind == ElementKind.ENUM
 
     override val lightClassOriginKind: LightClassOriginKind?
         get() = null
 
     override val methods: Collection<JavaMethod>
-        get() = enclosedElements
+        get() = if (isFake) emptyList() else enclosedElements
             .filter { it.kind == ElementKind.METHOD && !isEnumValuesOrValueOf(it as ExecutableElement) }
             .map { SymbolBasedMethod(it as ExecutableElement, this, javac) }
 
@@ -125,12 +129,12 @@ class SymbolBasedClass(
     }
 
     override val fields: Collection<JavaField>
-        get() = enclosedElements
+        get() = if (isFake) emptyList() else enclosedElements
             .filter { it.kind.isField && Name.isValidIdentifier(it.simpleName.toString()) }
             .map { SymbolBasedField(it as VariableElement, this, javac) }
 
     override val constructors: Collection<JavaConstructor>
-        get() = enclosedElements
+        get() = if (isFake) emptyList() else enclosedElements
             .filter { it.kind == ElementKind.CONSTRUCTOR }
             .map { SymbolBasedConstructor(it as ExecutableElement, this, javac) }
 

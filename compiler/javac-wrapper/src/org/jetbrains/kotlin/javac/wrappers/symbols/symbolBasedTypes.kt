@@ -71,7 +71,7 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
     javac: JavacWrapper
 ) : SymbolBasedType<T>(typeMirror, javac), JavaClassifierType {
 
-    private val isFake get() = (classifier as? SymbolBasedClass)?.fake == true
+    private val isFake get() = (classifier as? SymbolBasedClass)?.isFake == true
 
     override val classifier: JavaClassifier?
             by lazy {
@@ -80,7 +80,7 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
                         // try to find cached javaClass
                         val classId = symbol.computeClassId()
                         classId?.let { javac.findClass(it) }
-                            ?: SymbolBasedClass(symbol, javac, classId, symbol.classfile, fake = true)
+                            ?: SymbolBasedClass(symbol, javac, classId, symbol.classfile, isFake = true)
                     }
                     TypeKind.TYPEVAR -> SymbolBasedTypeParameter((typeMirror as TypeVariable).asElement() as TypeParameterElement, javac)
                     else -> null
@@ -89,7 +89,7 @@ class SymbolBasedClassifierType<out T : TypeMirror>(
 
     override val typeArguments: List<JavaType>
         get() {
-            if (typeMirror.kind != TypeKind.DECLARED) return emptyList()
+            if (typeMirror.kind != TypeKind.DECLARED || isFake) return emptyList()
 
             val arguments = arrayListOf<JavaType>()
             var type = typeMirror as DeclaredType
