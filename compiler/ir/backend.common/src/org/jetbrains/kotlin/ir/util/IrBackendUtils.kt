@@ -17,6 +17,7 @@
 package org.jetbrains.kotlin.ir.util
 
 import org.jetbrains.kotlin.backend.common.atMostOne
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -24,18 +25,24 @@ import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.name.Name
 
-fun IrClassSymbol.getPropertyDeclaration(name: String) =
-    this.owner.declarations.filterIsInstance<IrProperty>()
+fun IrClass.getPropertyDeclaration(name: String) =
+    declarations.filterIsInstance<IrProperty>()
         .atMostOne { it.descriptor.name == Name.identifier(name) }
 
-fun IrClassSymbol.getSimpleFunction(name: String): IrSimpleFunctionSymbol? =
-        owner.findDeclaration<IrSimpleFunction> { it.name.asString() == name }?.symbol
+fun IrClass.getSimpleFunction(name: String): IrSimpleFunctionSymbol? =
+    findDeclaration<IrSimpleFunction> { it.name.asString() == name }?.symbol
 
-fun IrClassSymbol.getPropertyGetter(name: String): IrSimpleFunctionSymbol? =
-    this.getPropertyDeclaration(name)?.getter?.symbol ?: this.getSimpleFunction("<get-$name>")
+fun IrClass.getPropertyGetter(name: String): IrSimpleFunctionSymbol? =
+    getPropertyDeclaration(name)?.getter?.symbol ?: this.getSimpleFunction("<get-$name>")
 
-fun IrClassSymbol.getPropertySetter(name: String): IrSimpleFunctionSymbol? =
-    this.getPropertyDeclaration(name)?.setter?.symbol ?: this.getSimpleFunction("<set-$name>")
+fun IrClass.getPropertySetter(name: String): IrSimpleFunctionSymbol? =
+    getPropertyDeclaration(name)?.setter?.symbol ?: this.getSimpleFunction("<set-$name>")
 
-fun IrClassSymbol.getPropertyField(name: String): IrFieldSymbol? =
-    this.getPropertyDeclaration(name)?.backingField?.symbol
+fun IrClass.getPropertyField(name: String): IrFieldSymbol? =
+    getPropertyDeclaration(name)?.backingField?.symbol
+
+fun IrClassSymbol.getPropertyDeclaration(name: String) = owner.getPropertyDeclaration(name)
+fun IrClassSymbol.getSimpleFunction(name: String): IrSimpleFunctionSymbol? = owner.getSimpleFunction(name)
+fun IrClassSymbol.getPropertyGetter(name: String): IrSimpleFunctionSymbol? = owner.getPropertyGetter(name)
+fun IrClassSymbol.getPropertySetter(name: String): IrSimpleFunctionSymbol? = owner.getPropertyGetter(name)
+fun IrClassSymbol.getPropertyField(name: String): IrFieldSymbol? = owner.getPropertyField(name)
