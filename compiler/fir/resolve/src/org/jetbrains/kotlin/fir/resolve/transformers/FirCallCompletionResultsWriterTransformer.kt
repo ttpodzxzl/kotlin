@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.expressions.*
-import org.jetbrains.kotlin.fir.expressions.impl.FirNoReceiverExpression
 import org.jetbrains.kotlin.fir.references.FirResolvedCallableReferenceImpl
 import org.jetbrains.kotlin.fir.resolve.calls.FirNamedReferenceWithCandidate
 import org.jetbrains.kotlin.fir.resolve.calls.candidate
@@ -145,7 +144,7 @@ class FirCallCompletionResultsWriterTransformer(
 
             anonymousFunction.replaceTypeRef(anonymousFunction.constructFunctionalTypeRef(session))
         }
-        return super.transformAnonymousFunction(anonymousFunction, data)
+        return transformElement(anonymousFunction, data)
     }
 
     override fun transformBlock(block: FirBlock, data: Nothing?): CompositeTransformResult<FirStatement> {
@@ -155,7 +154,7 @@ class FirCallCompletionResultsWriterTransformer(
             val resultType = block.resultType.withReplacedConeType(finalType)
             block.replaceTypeRef(resultType)
         }
-        return super.transformBlock(block, data)
+        return transformElement(block, data)
     }
 
     override fun transformWhenExpression(whenExpression: FirWhenExpression, data: Nothing?): CompositeTransformResult<FirStatement> {

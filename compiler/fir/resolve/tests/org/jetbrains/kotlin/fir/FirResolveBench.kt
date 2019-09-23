@@ -8,11 +8,14 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.fir.builder.RawFirBuilder
 import org.jetbrains.kotlin.fir.declarations.FirFile
+import org.jetbrains.kotlin.fir.expressions.FirCallableReferenceAccess
+import org.jetbrains.kotlin.fir.expressions.FirComponentCall
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.resolve.FirProvider
 import org.jetbrains.kotlin.fir.resolve.impl.FirProviderImpl
 import org.jetbrains.kotlin.fir.types.*
+import org.jetbrains.kotlin.fir.visitors.FirDefaultVisitorVoid
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.psi.KtFile
@@ -170,7 +173,7 @@ class FirResolveBench(val withProgress: Boolean) {
             val fileDocumentManager = FileDocumentManager.getInstance()
 
             firFiles.forEach {
-                it.accept(object : FirVisitorVoid() {
+                it.accept(object : FirDefaultVisitorVoid() {
 
                     fun reportProblem(problem: String, psi: PsiElement) {
                         val document = try {
@@ -197,7 +200,7 @@ class FirResolveBench(val withProgress: Boolean) {
                             }
                         }
 
-                        super.visitFunctionCall(functionCall)
+                        visitElement(functionCall)
                     }
 
                     override fun visitQualifiedAccessExpression(qualifiedAccessExpression: FirQualifiedAccessExpression) {
@@ -209,7 +212,7 @@ class FirResolveBench(val withProgress: Boolean) {
                             }
                         }
 
-                        super.visitQualifiedAccessExpression(qualifiedAccessExpression)
+                        visitElement(qualifiedAccessExpression)
                     }
 
                     override fun visitTypeRef(typeRef: FirTypeRef) {

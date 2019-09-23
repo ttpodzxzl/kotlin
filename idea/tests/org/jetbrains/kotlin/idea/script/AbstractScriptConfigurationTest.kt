@@ -100,19 +100,7 @@ abstract class AbstractScriptConfigurationTest : KotlinCompletionTestCase() {
             ModuleRootModificationUtil.addDependency(myModule, newModule)
         }
 
-        if (configureConflictingModule in environment) {
-            val sharedLib = VfsUtil.findFileByIoFile(environment["lib-classes"] as File, true)!!
-            if (module == null) {
-                myModule = createTestModuleByName("mainModule")
-            }
-            module.addDependency(projectLibrary("sharedLib", classesRoot = sharedLib))
-        }
-
         if (module != null) {
-            ModuleRootModificationUtil.updateModel(module) { model ->
-                model.sdk = sdk
-            }
-
             module.addDependency(
                 projectLibrary(
                     "script-runtime",
@@ -130,8 +118,25 @@ abstract class AbstractScriptConfigurationTest : KotlinCompletionTestCase() {
             }
         }
 
+        if (configureConflictingModule in environment) {
+            val sharedLib = VfsUtil.findFileByIoFile(environment["lib-classes"] as File, true)!!
+            if (module == null) {
+                // Force create module if it doesn't exist
+                myModule = createTestModuleByName("mainModule")
+            }
+            module.addDependency(projectLibrary("sharedLib", classesRoot = sharedLib))
+        }
+
+        if (module != null) {
+            ModuleRootModificationUtil.updateModel(module) { model ->
+                model.sdk = sdk
+            }
+        }
+
         createFileAndSyncDependencies(mainScriptFile)
     }
+
+    private val oldScripClasspath: String? = System.getProperty("kotlin.script.classpath")
 
     override fun setUp() {
         super.setUp()
@@ -140,6 +145,9 @@ abstract class AbstractScriptConfigurationTest : KotlinCompletionTestCase() {
 
     override fun tearDown() {
         ApplicationManager.getApplication().isScriptDependenciesUpdaterDisabled = false
+
+        System.setProperty("kotlin.script.classpath", oldScripClasspath ?: "")
+
         super.tearDown()
     }
 
@@ -212,6 +220,10 @@ abstract class AbstractScriptConfigurationTest : KotlinCompletionTestCase() {
             compileLibToDir(it, *scriptClasspath())
         } ?: File("idea/testData/script/definition/defaultTemplate").takeIf { it.isDirectory }?.let {
             compileLibToDir(it, *scriptClasspath())
+        }
+
+        if (templateOutDir != null) {
+            System.setProperty("kotlin.script.classpath", templateOutDir.path)
         }
 
         val libSrcDir = File("${path}lib").takeIf { it.isDirectory }

@@ -28,7 +28,7 @@ class KotlinMocha(override val compilation: KotlinJsCompilation) : KotlinJsTestF
 
     override val requiredNpmDependencies: Collection<RequiredKotlinJsDependency>
         get() = listOf(
-            KotlinGradleNpmPackage("test-nodejs-runner"),
+            KotlinGradleNpmPackage("test-js-runner"),
             versions.mocha,
             versions.mochaTeamCityReporter
         )
@@ -55,12 +55,10 @@ class KotlinMocha(override val compilation: KotlinJsCompilation) : KotlinJsTestF
 
         val args = nodeJsArgs +
                 nodeModules.map {
-                    npmProject.nodeModulesDir.resolve(it).also { file ->
-                        check(file.isFile) { "Cannot find ${file.canonicalPath}" }
-                    }.canonicalPath
+                    npmProject.require(it)
                 } +
                 listOf(
-                    "-r", "kotlin-nodejs-source-map-support.js",
+                    "-r", "kotlin-test-js-runner/kotlin-nodejs-source-map-support.js",
                     "--reporter", "mocha-teamcity-reporter"
                 )
 

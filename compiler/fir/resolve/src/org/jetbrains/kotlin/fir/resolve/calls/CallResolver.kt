@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.fir.resolve.calls
 
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.resolve.BodyResolveComponents
 import org.jetbrains.kotlin.fir.resolve.transformers.ReturnTypeCalculator
 import org.jetbrains.kotlin.fir.scopes.FirScope
 import org.jetbrains.kotlin.fir.scopes.impl.FirLocalScope
@@ -17,8 +18,8 @@ enum class TowerDataKind {
 
 class CallResolver(
     val typeCalculator: ReturnTypeCalculator,
-    val components: InferenceComponents,
-    val resolutionStageRunner: ResolutionStageRunner,
+    val components: BodyResolveComponents,
+    private val resolutionStageRunner: ResolutionStageRunner,
     val topLevelScopes: List<FirScope>,
     val localScopes: List<FirLocalScope>
 ) {
@@ -64,7 +65,7 @@ class CallResolver(
         for (scope in localScopes) {
             towerDataConsumer.consume(
                 TowerDataKind.TOWER_LEVEL,
-                ScopeTowerLevel(session, scope, implicitExtensionReceiver = implicitReceiverValue),
+                ScopeTowerLevel(session, components, scope, implicitExtensionReceiver = implicitReceiverValue),
                 group++
             )
         }
@@ -83,7 +84,7 @@ class CallResolver(
                 // }
                 towerDataConsumer.consume(
                     TowerDataKind.TOWER_LEVEL,
-                    ScopeTowerLevel(session, implicitScope, implicitExtensionReceiver = implicitReceiverValue),
+                    ScopeTowerLevel(session, components, implicitScope, implicitExtensionReceiver = implicitReceiverValue),
                     group++
                 )
             }
@@ -97,7 +98,7 @@ class CallResolver(
                     // }
                     towerDataConsumer.consume(
                         TowerDataKind.TOWER_LEVEL,
-                        ScopeTowerLevel(session, implicitCompanionScope, implicitExtensionReceiver = implicitReceiverValue),
+                        ScopeTowerLevel(session, components, implicitCompanionScope, implicitExtensionReceiver = implicitReceiverValue),
                         group++
                     )
                 }
@@ -137,7 +138,7 @@ class CallResolver(
         for (scope in topLevelScopes) {
             towerDataConsumer.consume(
                 TowerDataKind.TOWER_LEVEL,
-                ScopeTowerLevel(session, scope, implicitExtensionReceiver = implicitReceiverValue),
+                ScopeTowerLevel(session, components, scope, implicitExtensionReceiver = implicitReceiverValue),
                 group++
             )
         }
@@ -162,7 +163,7 @@ class CallResolver(
         // Member of local scope
         // fun test(x: Int) = x
         for (scope in localScopes) {
-            towerDataConsumer.consume(TowerDataKind.TOWER_LEVEL, ScopeTowerLevel(session, scope), group++)
+            towerDataConsumer.consume(TowerDataKind.TOWER_LEVEL, ScopeTowerLevel(session, components, scope), group++)
         }
 
         var blockDispatchReceivers = false
@@ -180,7 +181,7 @@ class CallResolver(
                 //     val x = 0
                 //     class Nested { val y = x }
                 // }
-                towerDataConsumer.consume(TowerDataKind.TOWER_LEVEL, ScopeTowerLevel(session, implicitScope), group++)
+                towerDataConsumer.consume(TowerDataKind.TOWER_LEVEL, ScopeTowerLevel(session, components, implicitScope), group++)
             }
             if (implicitReceiverValue is ImplicitDispatchReceiverValue) {
                 val implicitCompanionScope = implicitReceiverValue.implicitCompanionScope
@@ -190,7 +191,7 @@ class CallResolver(
                     //     companion object { val x = 0 }
                     //     class Nested { val y = x }
                     // }
-                    towerDataConsumer.consume(TowerDataKind.TOWER_LEVEL, ScopeTowerLevel(session, implicitCompanionScope), group++)
+                    towerDataConsumer.consume(TowerDataKind.TOWER_LEVEL, ScopeTowerLevel(session, components, implicitCompanionScope), group++)
                 }
                 if (!implicitReceiverValue.boundSymbol.fir.isInner) {
                     blockDispatchReceivers = true
@@ -202,7 +203,7 @@ class CallResolver(
         // val x = 0
         // fun test() { x }
         for (scope in topLevelScopes) {
-            towerDataConsumer.consume(TowerDataKind.TOWER_LEVEL, ScopeTowerLevel(session, scope), group++)
+            towerDataConsumer.consume(TowerDataKind.TOWER_LEVEL, ScopeTowerLevel(session, components, scope), group++)
         }
 
         return collector

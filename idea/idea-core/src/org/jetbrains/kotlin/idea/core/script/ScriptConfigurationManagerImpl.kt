@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.idea.core.util.EDT
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.isNonScript
 import org.jetbrains.kotlin.scripting.resolve.ScriptCompilationConfigurationResult
 import org.jetbrains.kotlin.scripting.resolve.ScriptCompilationConfigurationWrapper
 import org.jetbrains.kotlin.scripting.resolve.ScriptReportSink
@@ -99,6 +100,8 @@ class ScriptConfigurationManagerImpl internal constructor(private val project: P
      * Start re-highlighting for opened scripts
      */
     override fun clearConfigurationCachesAndRehighlight() {
+        ScriptDependenciesModificationTracker.getInstance(project).incModificationCount()
+
         clearAndRehighlight()
     }
 
@@ -320,7 +323,8 @@ class ScriptConfigurationManagerImpl internal constructor(private val project: P
     }
 
     private fun clearAndRehighlight() {
-        updateHighlighting(memoryCache.clearConfigurationCaches())
+        val openedScripts = FileEditorManager.getInstance(project).openFiles.filterNot { it.isNonScript() }
+        updateHighlighting(openedScripts)
     }
 
     private fun scriptDependenciesClassFilesScope(file: VirtualFile): GlobalSearchScope {

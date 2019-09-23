@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.codegen.coroutines.SUSPEND_FUNCTION_COMPLETION_PARAM
 import org.jetbrains.kotlin.config.isReleaseCoroutines
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOriginImpl
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -27,14 +28,12 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.copyTypeArgumentsFrom
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrErrorExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
-import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.explicitParameters
-import org.jetbrains.kotlin.ir.util.isSuspend
-import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.psi.KtElement
@@ -99,6 +98,9 @@ internal fun generateStateMachineForLambda(
 internal fun IrFunction.isInvokeSuspendOfLambda(context: JvmBackendContext): Boolean =
     name.asString() == INVOKE_SUSPEND_METHOD_NAME && parent in context.suspendLambdaToOriginalFunctionMap
 
+internal fun IrFunction.isInvokeOfSuspendLambda(context: JvmBackendContext): Boolean =
+    name.asString() == "invoke" && parent in context.suspendLambdaToOriginalFunctionMap
+
 internal fun IrFunction.isInvokeSuspendOfContinuation(context: JvmBackendContext): Boolean =
     name.asString() == INVOKE_SUSPEND_METHOD_NAME && parentAsClass in context.suspendFunctionContinuations.values
 
@@ -114,6 +116,9 @@ private object SUSPEND_FUNCTION_VIEW : IrDeclarationOriginImpl("SUSPEND_FUNCTION
 private fun IrFunction.suspendFunctionView(context: JvmBackendContext): IrFunction {
     require(this.isSuspend && this is IrSimpleFunction)
     val originalDescriptor = this.descriptor
+    // For SuspendFunction{N}.invoke we need to generate INVOKEINTERFACE Function{N+1}.invoke(...Ljava/lang/Object;)...
+    // instead of INVOKEINTERFACE Function{N+1}.invoke(...Lkotlin/coroutines/Continuation;)...
+    val isInvokeOfNumberedSuspendFunction = (symbol.owner.parent as? IrClass)?.defaultType?.isSuspendFunction() == true
     val descriptor =
         if (originalDescriptor is DescriptorWithContainerSource && originalDescriptor.containerSource != null)
             WrappedFunctionDescriptorWithContainerSource(originalDescriptor.containerSource!!)
@@ -133,8 +138,9 @@ private fun IrFunction.suspendFunctionView(context: JvmBackendContext): IrFuncti
 
         valueParameters.mapTo(it.valueParameters) { p -> p.copyTo(it) }
         it.addValueParameter(
-            SUSPEND_FUNCTION_COMPLETION_PARAMETER_NAME, context.ir.symbols.continuationClass
-                .createType(false, listOf(makeTypeProjection(returnType, Variance.INVARIANT)))
+            SUSPEND_FUNCTION_COMPLETION_PARAMETER_NAME,
+            if (isInvokeOfNumberedSuspendFunction) context.irBuiltIns.anyNType
+            else context.ir.symbols.continuationClass.createType(false, listOf(makeTypeProjection(returnType, Variance.INVARIANT)))
         )
         val valueParametersMapping = explicitParameters.zip(it.explicitParameters).toMap()
         it.body = body?.deepCopyWithSymbols(this)
@@ -146,13 +152,17 @@ private fun IrFunction.suspendFunctionView(context: JvmBackendContext): IrFuncti
 
             override fun visitCall(expression: IrCall): IrExpression {
                 if (!expression.isSuspend) return super.visitCall(expression)
-                return super.visitCall(expression.createSuspendFunctionCallViewIfNeeded(context, it))
+                return super.visitCall(expression.createSuspendFunctionCallViewIfNeeded(context, it, callerIsInlineLambda = false))
             }
         })
     }
 }
 
-internal fun IrCall.createSuspendFunctionCallViewIfNeeded(context: JvmBackendContext, caller: IrFunction): IrCall {
+internal fun IrCall.createSuspendFunctionCallViewIfNeeded(
+    context: JvmBackendContext,
+    caller: IrFunction,
+    callerIsInlineLambda: Boolean
+): IrCall {
     if (!isSuspend) return this
     val view = (symbol.owner as IrSimpleFunction).getOrCreateSuspendFunctionViewIfNeeded(context)
     if (view == symbol.owner) return this
@@ -164,9 +174,19 @@ internal fun IrCall.createSuspendFunctionCallViewIfNeeded(context: JvmBackendCon
             it.putValueArgument(i, getValueArgument(i))
         }
         val continuationParameter =
-            if (caller.isInvokeSuspendOfLambda(context) || caller.isInvokeSuspendOfContinuation(context)) caller.dispatchReceiverParameter!!
-            else caller.valueParameters.last()
-        val continuation = IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, continuationParameter.symbol)
-        it.putValueArgument(valueArgumentsCount, continuation)
+            when {
+                caller.isInvokeSuspendOfLambda(context) || caller.isInvokeSuspendOfContinuation(context) ->
+                    IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, caller.dispatchReceiverParameter!!.symbol)
+                callerIsInlineLambda -> context.fakeContinuation
+                else -> IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, caller.valueParameters.last().symbol)
+            }
+        it.putValueArgument(valueArgumentsCount, continuationParameter)
     }
 }
+
+internal fun createFakeContinuation(context: JvmBackendContext): IrExpression = IrErrorExpressionImpl(
+    UNDEFINED_OFFSET,
+    UNDEFINED_OFFSET,
+    context.ir.symbols.continuationClass.createType(true, listOf(makeTypeProjection(context.irBuiltIns.anyNType, Variance.INVARIANT))),
+    "FAKE_CONTINUATION"
+)

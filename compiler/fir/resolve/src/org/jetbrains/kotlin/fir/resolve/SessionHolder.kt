@@ -30,6 +30,8 @@ interface BodyResolveComponents : SessionHolder {
     val container: FirDeclaration
     val inferenceComponents: InferenceComponents
     val resolutionStageRunner: ResolutionStageRunner
+    val scopeSession: ScopeSession
+    val samResolver: FirSamResolver
 
     val <D> AbstractFirBasedSymbol<D>.phasedFir: D where D : FirDeclaration, D : FirSymbolOwner<D>
         get() = phasedFir(session, FirResolvePhase.DECLARATIONS)
