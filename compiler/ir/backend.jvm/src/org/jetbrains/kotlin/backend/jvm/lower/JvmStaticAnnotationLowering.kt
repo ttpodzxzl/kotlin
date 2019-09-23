@@ -16,7 +16,7 @@ import org.jetbrains.kotlin.backend.common.phaser.makeIrFilePhase
 import org.jetbrains.kotlin.backend.common.runOnFilePostfix
 import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
-import org.jetbrains.kotlin.codegen.OwnerKind
+import org.jetbrains.kotlin.backend.jvm.ir.isInCurrentModule
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -225,7 +225,7 @@ private class MakeCallsStatic(
         return IrFunctionImpl(
             startOffset, endOffset, origin,
             IrSimpleFunctionSymbolImpl(newDescriptor),
-            Name.identifier(context.methodSignatureMapper.mapFunctionName(this, OwnerKind.IMPLEMENTATION)),
+            name,
             visibility, modality, returnType, isInline, isExternal, isTailrec, isSuspend
         ).also {
             newDescriptor.bind(it)

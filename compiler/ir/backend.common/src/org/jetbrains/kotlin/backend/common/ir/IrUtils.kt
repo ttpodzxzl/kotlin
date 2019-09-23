@@ -564,6 +564,3 @@ fun copyBodyToStatic(oldFunction: IrFunction, staticFunction: IrFunction) {
             ?.transform(VariableRemapper(mapping), null)
             ?.patchDeclarationParents(staticFunction)
 }
-
-fun IrDeclaration.isInCurrentModule(): Boolean =
-    getPackageFragment() is IrFile
