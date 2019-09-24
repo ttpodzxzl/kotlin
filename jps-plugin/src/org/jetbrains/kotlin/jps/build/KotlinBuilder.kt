@@ -45,7 +45,7 @@ import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.ICReporterBase
 import org.jetbrains.kotlin.jps.incremental.JpsIncrementalCache
 import org.jetbrains.kotlin.jps.incremental.JpsLookupStorageManager
-import org.jetbrains.kotlin.jps.model.k2JvmCompilerArguments
+import org.jetbrains.kotlin.jps.model.kotlinCompilerSettings
 import org.jetbrains.kotlin.jps.model.kotlinKind
 import org.jetbrains.kotlin.jps.targets.KotlinJvmModuleBuildTarget
 import org.jetbrains.kotlin.jps.targets.KotlinModuleBuildTarget
@@ -324,7 +324,9 @@ class KotlinBuilder : ModuleLevelBuilder(BuilderCategory.SOURCE_PROCESSOR) {
         outputConsumer: OutputConsumer,
         fsOperations: FSOperationsHelper
     ): ModuleLevelBuilder.ExitCode {
-        val switchOffJavaBuilder = chunk.representativeTarget().module.k2JvmCompilerArguments.let { it.useJavac && it.compileJava }
+        val switchOffJavaBuilder = chunk.representativeTarget().module.kotlinCompilerSettings.additionalArguments.let {
+            "-Xuse-javac" in it && "-Xcompile-java" in it
+        }
         if (switchOffJavaBuilder) {
             JavaBuilder.IS_ENABLED[context] = true
         }
