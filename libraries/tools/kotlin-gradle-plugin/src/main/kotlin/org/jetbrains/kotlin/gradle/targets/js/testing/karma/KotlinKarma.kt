@@ -421,22 +421,15 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
         return object : JSServiceMessagesTestExecutionSpec(
             forkOptions,
             args,
-            false,
+            true,
             clientSettings
         ) {
             lateinit var progressLogger: ProgressLogger
-
-            var isLaunchFailed: Boolean = false
 
             override fun wrapExecute(body: () -> Unit) {
                 project.operation("Running and building tests with karma and webpack") {
                     progressLogger = this
                     body()
-
-                    if (isLaunchFailed) {
-                        showSuppressedOutput()
-                        throw IllegalStateException("Launch of some browsers was failed")
-                    }
                 }
             }
 
@@ -454,7 +447,7 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
                         val value = text.trimEnd()
                         progressLogger.progress(value)
 
-                        parseConsole(value)
+                        super.printNonTestOutput(text)
                     }
 
                     override fun getSuiteName(message: BaseTestSuiteMessage): String {
@@ -482,16 +475,6 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
 
                         return rawSuiteNameOnly.replace(" ", ".") // sample.a.DeepPackageTest.Inner
                     }
-
-                    private fun parseConsole(text: String) {
-                        if (KARMA_PROBLEM.matches(text)) {
-                            log.error(text)
-                            isLaunchFailed = true
-                            return
-                        }
-
-                        super.printNonTestOutput(text)
-                    }
                 }
         }
     }
@@ -511,7 +494,5 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
     companion object {
         const val CHROME_BIN = "CHROME_BIN"
         const val CHROME_CANARY_BIN = "CHROME_CANARY_BIN"
-
-        val KARMA_PROBLEM = "(?m)^.*\\d{2} \\d{2} \\d{4,} \\d{2}:\\d{2}:\\d{2}.\\d{3}:(ERROR|WARN) \\[.*]: (.*)\$".toRegex()
     }
 }
