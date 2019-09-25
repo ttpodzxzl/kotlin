@@ -251,11 +251,19 @@
     <applicationService serviceInterface="org.jetbrains.kotlin.idea.KotlinPluginUpdater"
                         serviceImplementation="org.jetbrains.kotlin.idea.KotlinPluginUpdater"/>
 
-    <projectService serviceInterface="org.jetbrains.kotlin.idea.util.ImportInsertHelper"
-                    serviceImplementation="org.jetbrains.kotlin.idea.util.ImportInsertHelperImpl"/>
-
     <applicationService serviceInterface="org.jetbrains.kotlin.psi.KotlinDeclarationNavigationPolicy"
                         serviceImplementation="org.jetbrains.kotlin.idea.decompiler.navigation.KotlinDeclarationNavigationPolicyImpl"/>
+
+    <!-- since 192 use light service @Service instead of this declaration -->
+    <applicationService serviceInterface="org.jetbrains.kotlin.idea.caches.IDEKotlinBinaryClassCache"
+                        serviceImplementation="org.jetbrains.kotlin.idea.caches.IDEKotlinBinaryClassCache"/>
+
+    <!-- since 192 use light service @Service instead of this declaration -->
+    <applicationService serviceInterface="org.jetbrains.kotlin.idea.core.formatter.KotlinCodeStyleSettings$KotlinCodeStyleSettingsHolder"
+                        serviceImplementation="org.jetbrains.kotlin.idea.core.formatter.KotlinCodeStyleSettings$KotlinCodeStyleSettingsHolder"/>
+
+    <projectService serviceInterface="org.jetbrains.kotlin.idea.util.ImportInsertHelper"
+                    serviceImplementation="org.jetbrains.kotlin.idea.util.ImportInsertHelperImpl"/>
 
     <projectService serviceInterface="org.jetbrains.kotlin.analyzer.KotlinModificationTrackerService"
                     serviceImplementation="org.jetbrains.kotlin.idea.caches.trackers.KotlinIDEModificationTrackerService"/>
@@ -778,6 +786,7 @@
 
     <applicationService serviceInterface="org.jetbrains.kotlin.idea.editor.KotlinEditorOptions"
                         serviceImplementation="org.jetbrains.kotlin.idea.editor.KotlinEditorOptions"/>
+
     <editorSmartKeysConfigurable instance="org.jetbrains.kotlin.idea.editor.KotlinEditorOptionsConfigurable"/>
 
     <applicationService serviceInterface="org.jetbrains.kotlin.idea.refactoring.KotlinRefactoringSettings"
@@ -3443,11 +3452,14 @@
                      groupPath="Kotlin"
                      groupName="Style issues"
                      enabledByDefault="true"
-                     level="WEAK WARNING"
+                     level="INFORMATION"
                      language="kotlin"
     />
 
+    <projectService serviceInterface="org.jetbrains.kotlin.idea.codeInsight.KotlinCodeInsightWorkspaceSettings"
+                    serviceImplementation="org.jetbrains.kotlin.idea.codeInsight.KotlinCodeInsightWorkspaceSettings"/>
     <referenceImporter implementation="org.jetbrains.kotlin.idea.quickfix.KotlinReferenceImporter"/>
+    <autoImportOptionsProvider instance="org.jetbrains.kotlin.idea.codeInsight.KotlinCodeInsightWorkspaceSettingsProvider"/>
 
     <fileType.fileViewProviderFactory filetype="KJSM" implementationClass="com.intellij.psi.ClassFileViewProviderFactory"/>
     <filetype.stubBuilder filetype="KJSM" implementationClass="com.intellij.psi.impl.compiled.ClassFileStubBuilder"/>

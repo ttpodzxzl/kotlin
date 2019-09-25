@@ -17,11 +17,16 @@ import org.jetbrains.kotlin.nj2k.tree.*
 import org.jetbrains.kotlin.nj2k.types.*
 import org.jetbrains.kotlin.psi.KtClass
 
-class TypeMappingConversion(context: NewJ2kConverterContext) : RecursiveApplicableConversionBase(context) {
+class TypeMappingConversion(
+    context: NewJ2kConverterContext,
+    inline val filter: (typeElement: JKTypeElement) -> Boolean = { true }
+) : RecursiveApplicableConversionBase(context) {
     override fun applyToElement(element: JKTreeElement): JKTreeElement {
         when (element) {
             is JKTypeElement -> {
-                element.type = element.type.mapType(element)
+                if (filter(element)) {
+                    element.type = element.type.mapType(element)
+                }
             }
             is JKNewExpression -> {
                 val newClassSymbol = element.classSymbol.mapClassSymbol()
@@ -61,8 +66,8 @@ class TypeMappingConversion(context: NewJ2kConverterContext) : RecursiveApplicab
             is JKIsExpression ->
                 addTypeParametersToRawProjectionType(JKStarProjectionTypeImpl)
                     .updateNullability(Nullability.NotNull)
-            is JKTypeCastExpression ->
-                addTypeParametersToRawProjectionType(JKStarProjectionTypeImpl)
+            is JKInheritanceInfo ->
+                addTypeParametersToRawProjectionType(typeFactory.types.nullableAny)
             else ->
                 addTypeParametersToRawProjectionType(JKStarProjectionTypeImpl)
         }

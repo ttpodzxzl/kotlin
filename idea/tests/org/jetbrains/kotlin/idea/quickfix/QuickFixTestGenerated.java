@@ -1097,6 +1097,34 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
         }
     }
 
+    @TestMetadata("idea/testData/quickfix/addSemicolonBeforeLambdaExpression")
+    @TestDataPath("$PROJECT_ROOT")
+    @RunWith(JUnit3RunnerWithInners.class)
+    public static class AddSemicolonBeforeLambdaExpression extends AbstractQuickFixTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+        }
+
+        public void testAllFilesPresentInAddSemicolonBeforeLambdaExpression() throws Exception {
+            KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/testData/quickfix/addSemicolonBeforeLambdaExpression"), Pattern.compile("^([\\w\\-_]+)\\.kt$"), TargetBackend.ANY, true);
+        }
+
+        @TestMetadata("basic.kt")
+        public void testBasic() throws Exception {
+            runTest("idea/testData/quickfix/addSemicolonBeforeLambdaExpression/basic.kt");
+        }
+
+        @TestMetadata("multipleLambdas.kt")
+        public void testMultipleLambdas() throws Exception {
+            runTest("idea/testData/quickfix/addSemicolonBeforeLambdaExpression/multipleLambdas.kt");
+        }
+
+        @TestMetadata("withComments.kt")
+        public void testWithComments() throws Exception {
+            runTest("idea/testData/quickfix/addSemicolonBeforeLambdaExpression/withComments.kt");
+        }
+    }
+
     @TestMetadata("idea/testData/quickfix/addStarProjections")
     @TestDataPath("$PROJECT_ROOT")
     @RunWith(JUnit3RunnerWithInners.class)
@@ -3290,6 +3318,16 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                     runTest("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/enumEntryHasComma.kt");
                 }
 
+                @TestMetadata("enumEntryHasNoLineBreak.kt")
+                public void testEnumEntryHasNoLineBreak() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/enumEntryHasNoLineBreak.kt");
+                }
+
+                @TestMetadata("enumEntryHasSemicolon.kt")
+                public void testEnumEntryHasSemicolon() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/enumEntryHasSemicolon.kt");
+                }
+
                 @TestMetadata("enumEntryNoReceiver.kt")
                 public void testEnumEntryNoReceiver() throws Exception {
                     runTest("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/enumEntryNoReceiver.kt");
@@ -3780,6 +3818,16 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                 @TestMetadata("funOnClassObject.kt")
                 public void testFunOnClassObject() throws Exception {
                     runTest("idea/testData/quickfix/createFromUsage/createFunction/call/funOnClassObject.kt");
+                }
+
+                @TestMetadata("funOnEnumClass.kt")
+                public void testFunOnEnumClass() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createFunction/call/funOnEnumClass.kt");
+                }
+
+                @TestMetadata("funOnEnumClass2.kt")
+                public void testFunOnEnumClass2() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createFunction/call/funOnEnumClass2.kt");
                 }
 
                 @TestMetadata("funOnLibObject.kt")
@@ -4693,6 +4741,11 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                     KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration"), Pattern.compile("^([\\w\\-_]+)\\.kt$"), TargetBackend.ANY, true);
                 }
 
+                @TestMetadata("backticks.kt")
+                public void testBackticks() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/backticks.kt");
+                }
+
                 @TestMetadata("classNoExplication.kt")
                 public void testClassNoExplication() throws Exception {
                     runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/classNoExplication.kt");
@@ -4736,6 +4789,36 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                 @TestMetadata("inAnnotation.kt")
                 public void testInAnnotation() throws Exception {
                     runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/inAnnotation.kt");
+                }
+
+                @TestMetadata("inExtensionProperty.kt")
+                public void testInExtensionProperty() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/inExtensionProperty.kt");
+                }
+
+                @TestMetadata("inExtensionProperty2.kt")
+                public void testInExtensionProperty2() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/inExtensionProperty2.kt");
+                }
+
+                @TestMetadata("inExtensionProperty3.kt")
+                public void testInExtensionProperty3() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/inExtensionProperty3.kt");
+                }
+
+                @TestMetadata("inProperty.kt")
+                public void testInProperty() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/inProperty.kt");
+                }
+
+                @TestMetadata("inProperty2.kt")
+                public void testInProperty2() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/inProperty2.kt");
+                }
+
+                @TestMetadata("inProperty3.kt")
+                public void testInProperty3() throws Exception {
+                    runTest("idea/testData/quickfix/createFromUsage/createTypeParameter/inContainingDeclaration/inProperty3.kt");
                 }
 
                 @TestMetadata("inSuperTypeEntry.kt")
@@ -10828,9 +10911,19 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
             KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/testData/quickfix/replaceWithDotCall"), Pattern.compile("^([\\w\\-_]+)\\.kt$"), TargetBackend.ANY, true);
         }
 
+        @TestMetadata("comment.kt")
+        public void testComment() throws Exception {
+            runTest("idea/testData/quickfix/replaceWithDotCall/comment.kt");
+        }
+
         @TestMetadata("functionCall.kt")
         public void testFunctionCall() throws Exception {
             runTest("idea/testData/quickfix/replaceWithDotCall/functionCall.kt");
+        }
+
+        @TestMetadata("lineBreak.kt")
+        public void testLineBreak() throws Exception {
+            runTest("idea/testData/quickfix/replaceWithDotCall/lineBreak.kt");
         }
 
         @TestMetadata("normal.kt")
@@ -10886,6 +10979,11 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
             runTest("idea/testData/quickfix/replaceWithSafeCall/assignmentToProperty.kt");
         }
 
+        @TestMetadata("comment.kt")
+        public void testComment() throws Exception {
+            runTest("idea/testData/quickfix/replaceWithSafeCall/comment.kt");
+        }
+
         @TestMetadata("expression.kt")
         public void testExpression() throws Exception {
             runTest("idea/testData/quickfix/replaceWithSafeCall/expression.kt");
@@ -10914,6 +11012,11 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
         @TestMetadata("letWithParameter.kt")
         public void testLetWithParameter() throws Exception {
             runTest("idea/testData/quickfix/replaceWithSafeCall/letWithParameter.kt");
+        }
+
+        @TestMetadata("lineBreak.kt")
+        public void testLineBreak() throws Exception {
+            runTest("idea/testData/quickfix/replaceWithSafeCall/lineBreak.kt");
         }
 
         @TestMetadata("noReplaceWithSafeCallForImplicitReceiver.kt")
@@ -10984,6 +11087,11 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
             runTest("idea/testData/quickfix/replaceWithSafeCallForScopeFunction/assignment.kt");
         }
 
+        @TestMetadata("comment.kt")
+        public void testComment() throws Exception {
+            runTest("idea/testData/quickfix/replaceWithSafeCallForScopeFunction/comment.kt");
+        }
+
         @TestMetadata("let.kt")
         public void testLet() throws Exception {
             runTest("idea/testData/quickfix/replaceWithSafeCallForScopeFunction/let.kt");
@@ -11002,6 +11110,11 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
         @TestMetadata("letWithWrongParam.kt")
         public void testLetWithWrongParam() throws Exception {
             runTest("idea/testData/quickfix/replaceWithSafeCallForScopeFunction/letWithWrongParam.kt");
+        }
+
+        @TestMetadata("lineBreak.kt")
+        public void testLineBreak() throws Exception {
+            runTest("idea/testData/quickfix/replaceWithSafeCallForScopeFunction/lineBreak.kt");
         }
 
         @TestMetadata("notInsideScope.kt")

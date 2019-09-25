@@ -5,8 +5,8 @@
 
 package org.jetbrains.kotlin.android.parcel
 
-import org.jetbrains.kotlin.annotation.plugin.ide.isAnnotated
-import org.jetbrains.kotlin.annotation.plugin.ide.isOrdinaryClass
+import org.jetbrains.kotlin.util.isAnnotated
+import org.jetbrains.kotlin.util.isOrdinaryClass
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.extensions.LightClassApplicabilityCheckExtension
@@ -15,8 +15,8 @@ import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.extensions.LightClassApplicabilityType.LightClass
 import org.jetbrains.kotlin.extensions.LightClassApplicabilityType.UltraLightClass
 
-
 class IDEParcelableApplicabilityExtension : LightClassApplicabilityCheckExtension {
+
     override fun checkApplicabilityType(declaration: KtDeclaration, descriptor: Lazy<DeclarationDescriptor?>): LightClassApplicabilityType {
 
         if (!declaration.isOrdinaryClass || !declaration.isAnnotated) return UltraLightClass

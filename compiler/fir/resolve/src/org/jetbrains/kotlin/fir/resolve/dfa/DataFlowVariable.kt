@@ -6,79 +6,97 @@
 package org.jetbrains.kotlin.fir.resolve.dfa
 
 import org.jetbrains.kotlin.fir.FirElement
-import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.AbstractFirBasedSymbol
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
 /*
  * isSynthetic = false for variables that represents actual variables in fir
  * isSynthetic = true for complex expressions (like when expression)
  */
-sealed class DataFlowVariable(val index: Int, val fir: FirElement) {
-    abstract val isSynthetic: Boolean
-    abstract val real: DataFlowVariable
-
-    final override fun hashCode(): Int {
-        return index
-    }
-
-    final override fun equals(other: Any?): Boolean {
-        if (other !is DataFlowVariable) return false
-        return index == other.index
-    }
-
+sealed class DataFlowVariable(private val variableIndexForDebug: Int, val fir: FirElement) {
     final override fun toString(): String {
-        return "d$index"
+        return "d$variableIndexForDebug"
     }
 }
 
-private class RealDataFlowVariable(index: Int, fir: FirElement) : DataFlowVariable(index, fir) {
-    override val isSynthetic: Boolean get() = false
+open class RealDataFlowVariable(index: Int, fir: FirElement, val isThisReference: Boolean) : DataFlowVariable(index, fir)
 
-    override val real: DataFlowVariable get() = this
+class SyntheticDataFlowVariable(index: Int, fir: FirElement) : DataFlowVariable(index, fir)
+
+class AliasedDataFlowVariable(
+    index: Int,
+    fir: FirElement,
+    var delegate: RealDataFlowVariable
+) : RealDataFlowVariable(index, fir, delegate.isThisReference)
+
+// -------------------------------------------------------------------------------------------------------------------------
+
+@UseExperimental(ExperimentalContracts::class)
+fun DataFlowVariable.isSynthetic(): Boolean {
+    contract {
+        returns(true) implies (this@isSynthetic is SyntheticDataFlowVariable)
+    }
+    return this is SyntheticDataFlowVariable
 }
 
-private class SyntheticDataFlowVariable(index: Int, fir: FirElement) : DataFlowVariable(index, fir) {
-    override val isSynthetic: Boolean get() = true
-
-    override val real: DataFlowVariable get() = this
+@UseExperimental(ExperimentalContracts::class)
+fun DataFlowVariable.isAliasVariable(): Boolean {
+    contract {
+        returns(true) implies (this@isAliasVariable is AliasedDataFlowVariable)
+    }
+    return this is AliasedDataFlowVariable
 }
 
-private class AliasedDataFlowVariable(index: Int, fir: FirElement, var delegate: DataFlowVariable) : DataFlowVariable(index, fir) {
-    override val isSynthetic: Boolean get() = delegate.isSynthetic
+val RealDataFlowVariable.variableUnderAlias: RealDataFlowVariable
+    get() {
+        var variable = this
+        while (variable.isAliasVariable()) {
+            variable = variable.delegate
+        }
+        return variable
+    }
 
-    override val real: DataFlowVariable get() = delegate.real
-}
-
+// -------------------------------------------------------------------------------------------------------------------------
 
 class DataFlowVariableStorage {
     private val fir2DfiMap: MutableMap<FirElement, DataFlowVariable> = mutableMapOf()
-    private var counter: Int = 1
+    private var debugIndexCounter: Int = 1
 
-    fun getOrCreateNewRealVariable(symbol: FirBasedSymbol<*>): DataFlowVariable {
+    fun getOrCreateNewRealVariable(symbol: AbstractFirBasedSymbol<*>): RealDataFlowVariable {
+        return getOrCreateNewRealVariableImpl(symbol, false)
+    }
+
+    fun getOrCreateNewThisRealVariable(symbol: AbstractFirBasedSymbol<*>): RealDataFlowVariable {
+        return getOrCreateNewRealVariableImpl(symbol, true)
+    }
+
+    private fun getOrCreateNewRealVariableImpl(symbol: AbstractFirBasedSymbol<*>, isThisReference: Boolean): RealDataFlowVariable {
         val fir = symbol.fir
-        get(fir)?.let { return it }
-        return RealDataFlowVariable(counter++, fir).also { storeVariable(it, fir) }
+        get(fir)?.let { return it as RealDataFlowVariable }
+        return RealDataFlowVariable(debugIndexCounter++, fir, isThisReference).also { storeVariable(it, fir) }
     }
 
-    fun getOrCreateNewSyntheticVariable(fir: FirElement): DataFlowVariable {
-        get(fir)?.let { return it }
-        return SyntheticDataFlowVariable(counter++, fir).also { storeVariable(it, fir) }
+    fun getOrCreateNewSyntheticVariable(fir: FirElement): SyntheticDataFlowVariable {
+        get(fir)?.let { return it as SyntheticDataFlowVariable }
+        return SyntheticDataFlowVariable(debugIndexCounter++, fir).also { storeVariable(it, fir) }
     }
 
-    fun createAliasVariable(symbol: FirBasedSymbol<*>, variable: DataFlowVariable) {
+    fun createAliasVariable(symbol: AbstractFirBasedSymbol<*>, variable: RealDataFlowVariable) {
         createAliasVariable(symbol.fir, variable)
     }
 
-    private fun createAliasVariable(fir: FirElement, variable: DataFlowVariable) {
-        AliasedDataFlowVariable(counter++, fir, variable).also { storeVariable(it, fir) }
+    private fun createAliasVariable(fir: FirElement, variable: RealDataFlowVariable) {
+        AliasedDataFlowVariable(debugIndexCounter++, fir, variable).also { storeVariable(it, fir) }
     }
 
-    fun rebindAliasVariable(aliasVariable: DataFlowVariable, newVariable: DataFlowVariable) {
+    fun rebindAliasVariable(aliasVariable: RealDataFlowVariable, newVariable: RealDataFlowVariable) {
         val fir = removeVariable(aliasVariable)
         requireNotNull(fir)
         createAliasVariable(fir, newVariable)
     }
 
-    fun removeRealVariable(symbol: FirBasedSymbol<*>) {
+    fun removeRealVariable(symbol: AbstractFirBasedSymbol<*>) {
         removeSyntheticVariable(symbol.fir)
     }
 
@@ -93,6 +111,13 @@ class DataFlowVariableStorage {
         }
     }
 
+    fun removeVariableIfSynthetic(variable: DataFlowVariable): FirElement? {
+        if (variable is SyntheticDataFlowVariable) {
+            return removeVariable(variable)
+        }
+        return null
+    }
+
     operator fun get(variable: DataFlowVariable): FirElement? {
         return variable.fir
     }
@@ -101,13 +126,13 @@ class DataFlowVariableStorage {
         return fir2DfiMap[firElement]
     }
 
-    operator fun get(symbol: FirBasedSymbol<*>): DataFlowVariable? {
-        return fir2DfiMap[symbol.fir]
+    operator fun get(symbol: AbstractFirBasedSymbol<*>): RealDataFlowVariable? {
+        return fir2DfiMap[symbol.fir] as RealDataFlowVariable?
     }
 
     fun reset() {
         fir2DfiMap.clear()
-        counter = 1
+        debugIndexCounter = 1
     }
 
     private fun storeVariable(variable: DataFlowVariable, fir: FirElement) {

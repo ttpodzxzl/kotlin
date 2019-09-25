@@ -67,7 +67,7 @@ open class ClassCodegen protected constructor(
 
     private var sourceMapper: DefaultSourceMapper? = null
 
-    private val serializerExtension = JvmSerializerExtension(visitor.serializationBindings, state)
+    private val serializerExtension = JvmSerializerExtension(visitor.serializationBindings, state, typeMapper)
     private val serializer: DescriptorSerializer? =
         when (val metadata = irClass.metadata) {
             is MetadataSource.Class -> DescriptorSerializer.create(metadata.descriptor, serializerExtension, parentClassCodegen?.serializer)
@@ -135,10 +135,7 @@ open class ClassCodegen protected constructor(
     private fun generateKotlinMetadataAnnotation() {
         val localDelegatedProperties = (irClass.attributeOwnerId as? IrClass)?.let(context.localDelegatedProperties::get)
         if (localDelegatedProperties != null && localDelegatedProperties.isNotEmpty()) {
-            // Remove this check once CodegenAnnotatingVisitor is no longer used in JVM IR
-            if (state.bindingContext.get(CodegenBinding.DELEGATED_PROPERTIES, type).isNullOrEmpty()) {
-                state.bindingTrace.record(CodegenBinding.DELEGATED_PROPERTIES, type, localDelegatedProperties.map { it.descriptor })
-            }
+            state.bindingTrace.record(CodegenBinding.DELEGATED_PROPERTIES, type, localDelegatedProperties.map { it.descriptor })
         }
 
         when (val metadata = irClass.metadata) {

@@ -12,23 +12,20 @@ import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccess
 import org.jetbrains.kotlin.fir.expressions.FirStatement
 import org.jetbrains.kotlin.fir.expressions.impl.FirResolvedQualifierImpl
-import org.jetbrains.kotlin.fir.references.*
+import org.jetbrains.kotlin.fir.references.FirBackingFieldReferenceImpl
+import org.jetbrains.kotlin.fir.references.FirErrorNamedReference
+import org.jetbrains.kotlin.fir.references.FirResolvedCallableReferenceImpl
+import org.jetbrains.kotlin.fir.references.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.resolve.BodyResolveComponents
 import org.jetbrains.kotlin.fir.resolve.ImplicitReceiverStack
 import org.jetbrains.kotlin.fir.resolve.calls.*
 import org.jetbrains.kotlin.fir.resolve.transformers.*
-import org.jetbrains.kotlin.fir.resolve.transformers.StoreNameReference
-import org.jetbrains.kotlin.fir.resolve.transformers.resultType
 import org.jetbrains.kotlin.fir.resolve.typeForQualifier
 import org.jetbrains.kotlin.fir.resolve.typeFromCallee
 import org.jetbrains.kotlin.fir.scopes.FirScope
 import org.jetbrains.kotlin.fir.scopes.impl.FirLocalScope
-import org.jetbrains.kotlin.fir.symbols.ConeCallableSymbol
-import org.jetbrains.kotlin.fir.symbols.ConeClassLikeSymbol
-import org.jetbrains.kotlin.fir.symbols.ConeSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirVariableSymbol
+import org.jetbrains.kotlin.fir.symbols.AbstractFirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.*
 import org.jetbrains.kotlin.fir.types.ConeKotlinErrorType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.resolve.calls.results.TypeSpecificityComparator
@@ -64,12 +61,12 @@ class FirCallResolver(
             transformer.container
         ) { it.resultType }
         val resolver = CallResolver(
-            returnTypeCalculator, inferenceComponents, resolutionStageRunner,
+            returnTypeCalculator, this, resolutionStageRunner,
             topLevelScopes = topLevelScopes.asReversed(),
             localScopes = localScopes.asReversed()
         )
 
-        val consumer = createFunctionConsumer(session, name, info, inferenceComponents, resolver.collector, resolver)
+        val consumer = createFunctionConsumer(session, name, info, this, resolver.collector, resolver)
         val result = resolver.runTowerResolver(consumer, implicitReceiverStack.receiversAsReversed())
         val bestCandidates = result.bestCandidates()
         val reducedCandidates = if (result.currentApplicability < CandidateApplicability.SYNTHETIC_RESOLVED) {
@@ -158,7 +155,7 @@ class FirCallResolver(
             transformer.container
         ) { it.resultType }
         val resolver = CallResolver(
-            returnTypeCalculator, inferenceComponents, resolutionStageRunner,
+            returnTypeCalculator, this, resolutionStageRunner,
             topLevelScopes = topLevelScopes.asReversed(),
             localScopes = localScopes.asReversed()
         )
@@ -166,7 +163,7 @@ class FirCallResolver(
         val consumer = createVariableAndObjectConsumer(
             session,
             callee.name,
-            info, inferenceComponents,
+            info, this,
             resolver.collector
         )
         val result = resolver.runTowerResolver(consumer, implicitReceiverStack.receiversAsReversed())
@@ -185,11 +182,11 @@ class FirCallResolver(
         }
 
         val referencedSymbol = when (nameReference) {
-            is FirResolvedCallableReference -> nameReference.coneSymbol
+            is FirResolvedCallableReference -> nameReference.resolvedSymbol
             is FirNamedReferenceWithCandidate -> nameReference.candidateSymbol
             else -> null
         }
-        if (referencedSymbol is ConeClassLikeSymbol) {
+        if (referencedSymbol is FirClassLikeSymbol<*>) {
             return FirResolvedQualifierImpl(nameReference.psi, referencedSymbol.classId).apply {
                 resultType = typeForQualifier(this)
             }
@@ -249,10 +246,10 @@ class FirCallResolver(
     }
 
 
-    private fun describeSymbol(symbol: ConeSymbol): String {
+    private fun describeSymbol(symbol: AbstractFirBasedSymbol<*>): String {
         return when (symbol) {
-            is ConeClassLikeSymbol -> symbol.classId.asString()
-            is ConeCallableSymbol -> symbol.callableId.toString()
+            is FirClassLikeSymbol<*> -> symbol.classId.asString()
+            is FirCallableSymbol<*> -> symbol.callableId.toString()
             else -> "$symbol"
         }
     }

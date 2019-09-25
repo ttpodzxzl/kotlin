@@ -12,7 +12,7 @@ import org.jetbrains.kotlin.resolve.calls.NewCommonSuperTypeCalculator
 import org.jetbrains.kotlin.types.model.TypeSystemCommonSuperTypesContext
 
 interface DataFlowInferenceContext : TypeSystemCommonSuperTypesContext, ConeInferenceContext {
-    fun myCommonSuperType(types: List<ConeKotlinType>): ConeKotlinType? {
+    fun commonSuperTypeOrNull(types: List<ConeKotlinType>): ConeKotlinType? {
         return when (types.size) {
             0 -> null
             1 -> types.first()
@@ -22,35 +22,11 @@ interface DataFlowInferenceContext : TypeSystemCommonSuperTypesContext, ConeInfe
         }
     }
 
-    fun myIntersectTypes(types: List<ConeKotlinType>): ConeKotlinType? {
+    fun intersectTypesOrNull(types: List<ConeKotlinType>): ConeKotlinType? {
         return when (types.size) {
             0 -> null
             1 -> types.first()
             else -> ConeTypeIntersector.intersectTypes(this as ConeInferenceContext, types)
         }
-    }
-
-    fun or(infos: Collection<FirDataFlowInfo>): FirDataFlowInfo {
-        infos.singleOrNull()?.let { return it }
-        val exactType = orTypes(infos.map { it.exactType })
-        val exactNotType = orTypes(infos.map { it.exactNotType })
-        return FirDataFlowInfo(exactType, exactNotType)
-    }
-
-    private fun orTypes(types: Collection<Set<ConeKotlinType>>): Set<ConeKotlinType> {
-        if (types.any { it.isEmpty() }) return emptySet()
-        val allTypes = types.flatMapTo(mutableSetOf()) { it }
-        val commonTypes = allTypes.toMutableSet()
-        types.forEach { commonTypes.retainAll(it) }
-        val differentTypes = allTypes - commonTypes
-        myCommonSuperType(differentTypes.toList())?.let { commonTypes += it }
-        return commonTypes
-    }
-
-    fun and(infos: Collection<FirDataFlowInfo>): FirDataFlowInfo {
-        infos.singleOrNull()?.let { return it }
-        val exactType = infos.flatMapTo(mutableSetOf()) { it.exactType }
-        val exactNotType = infos.flatMapTo(mutableSetOf()) { it.exactNotType }
-        return FirDataFlowInfo(exactType, exactNotType)
     }
 }

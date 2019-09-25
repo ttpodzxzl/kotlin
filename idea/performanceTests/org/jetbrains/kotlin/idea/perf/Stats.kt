@@ -6,15 +6,14 @@
 package org.jetbrains.kotlin.idea.perf
 
 import org.jetbrains.kotlin.idea.perf.WholeProjectPerformanceTest.Companion.nsToMs
+import org.jetbrains.kotlin.idea.perf.profilers.async.DummyProfilerHandler
+import org.jetbrains.kotlin.idea.perf.profilers.async.ProfilerHandler
 import org.jetbrains.kotlin.idea.testFramework.logMessage
 import org.jetbrains.kotlin.util.PerformanceCounter
 import java.io.*
-import kotlin.math.pow
-import kotlin.math.sqrt
 import kotlin.system.measureNanoTime
 import java.lang.ref.WeakReference
-import kotlin.math.exp
-import kotlin.math.ln
+import kotlin.math.*
 import kotlin.system.measureTimeMillis
 import kotlin.test.assertEquals
 
@@ -24,7 +23,7 @@ class Stats(val name: String = "", val header: Array<String> = arrayOf("Name", "
 
     private val perfTestRawDataMs = mutableListOf<Long>()
 
-    private val statsFile: File = File("build/stats${statFilePrefix()}.csv").absoluteFile
+    private val statsFile: File = File(pathToResource("stats${statFilePrefix()}.csv")).absoluteFile
 
     private val statsOutput: BufferedWriter
 
@@ -36,10 +35,14 @@ class Stats(val name: String = "", val header: Array<String> = arrayOf("Name", "
         PerformanceCounter.setTimeCounterEnabled(true)
     }
 
-    private fun statFilePrefix() = if (name.isNotEmpty()) "-${name.toLowerCase().replace(' ', '-').replace('/', '_')}" else ""
+    private fun statFilePrefix() = if (name.isNotEmpty()) "-${plainname()}" else ""
+
+    private fun plainname() = name.toLowerCase().replace(' ', '-').replace('/', '_')
+
+    private fun pathToResource(resource: String) = "build/$resource"
 
     private fun append(id: String, statInfosArray: Array<StatInfos>) {
-        val timingsMs = statInfosArray.map { info -> info?.let { it[TEST_KEY] as Long }?.nsToMs ?: 0L }.toLongArray()
+        val timingsMs = toTimingsMs(statInfosArray)
 
         val calcMean = calcMean(timingsMs)
 
@@ -77,6 +80,11 @@ class Stats(val name: String = "", val header: Array<String> = arrayOf("Name", "
         append(arrayOf(id, calcMean.mean, calcMean.stdDev))
     }
 
+    private fun toTimingsMs(statInfosArray: Array<StatInfos>) =
+        statInfosArray.map { info -> info?.let { it[TEST_KEY] as? Long }?.nsToMs ?: 0L }.toLongArray()
+
+    private fun calcMean(statInfosArray: Array<StatInfos>): Mean = calcMean(toTimingsMs(statInfosArray))
+
     private fun calcMean(values: LongArray): Mean {
         val mean = values.average()
 
@@ -106,32 +114,57 @@ class Stats(val name: String = "", val header: Array<String> = arrayOf("Name", "
         append(arrayOf(file, id, ms))
     }
 
-    fun <K, T> perfTest(
+    fun <SV, TV> perfTest(
         testName: String,
-        warmUpIterations: Int = 3,
-        iterations: Int = 10,
-        setUp: (TestData<K, T>) -> Unit = { },
-        test: (TestData<K, T>) -> Unit,
-        tearDown: (TestData<K, T>) -> Unit = { }
+        warmUpIterations: Int = 5,
+        iterations: Int = 20,
+        setUp: (TestData<SV, TV>) -> Unit = { },
+        test: (TestData<SV, TV>) -> Unit,
+        tearDown: (TestData<SV, TV>) -> Unit = { },
+        profileEnabled: Boolean = false
     ) {
 
-        tcSuite(testName) {
-            warmUpPhase(warmUpIterations, testName, setUp, test, tearDown)
-            val statInfoArray = mainPhase(iterations, testName, setUp, test, tearDown)
+        val warmPhaseData = PhaseData(
+            iterations = warmUpIterations,
+            testName = testName,
+            setUp = setUp,
+            test = test,
+            tearDown = tearDown,
+            profileEnabled = profileEnabled
+        )
+        val mainPhaseData = PhaseData(
+            iterations = iterations,
+            testName = testName,
+            setUp = setUp,
+            test = test,
+            tearDown = tearDown,
+            profileEnabled = profileEnabled
+        )
+        val block = {
+            warmUpPhase(warmPhaseData)
+            val statInfoArray = mainPhase(mainPhaseData)
 
             assertEquals(iterations, statInfoArray.size)
-            appendTimings(testName, statInfoArray)
+            if (testName != WARM_UP) {
+                appendTimings(testName, statInfoArray)
+            }
+        }
+
+        if (testName != WARM_UP) {
+            tcSuite(testName, block)
+        } else {
+            block()
         }
     }
 
-    private fun _printTimings(
+    private fun printTimings(
         prefix: String,
         statInfoArray: Array<StatInfos>,
         attemptFn: (Int) -> String = { attempt -> "#$attempt" }
     ) {
         for (statInfoIndex in statInfoArray.withIndex()) {
             val attempt = statInfoIndex.index
-            val statInfo = statInfoIndex.value!!
+            val statInfo = statInfoIndex.value ?: continue
             val n = "$name: $prefix ${attemptFn(attempt)}"
             printTestStarted(n)
             val t = statInfo[ERROR_KEY] as? Throwable
@@ -149,83 +182,77 @@ class Stats(val name: String = "", val header: Array<String> = arrayOf("Name", "
     fun printWarmUpTimings(
         prefix: String,
         warmUpStatInfosArray: Array<StatInfos>
-    ) {
-        _printTimings(prefix, warmUpStatInfosArray) { attempt -> "warm-up #$attempt" }
-    }
+    ) = printTimings(prefix, warmUpStatInfosArray) { attempt -> "warm-up #$attempt" }
 
     fun appendTimings(
         prefix: String,
         statInfosArray: Array<StatInfos>
     ) {
-        _printTimings(prefix, statInfosArray)
-        val namePrefix = "$name: $prefix"
-        append(namePrefix, statInfosArray)
+        printTimings(prefix, statInfosArray)
+        append("$name: $prefix", statInfosArray)
     }
 
-    private fun <K, T> mainPhase(
-        iterations: Int,
-        namePrefix: String,
-        setUp: (TestData<K, T>) -> Unit,
-        test: (TestData<K, T>) -> Unit,
-        tearDown: (TestData<K, T>) -> Unit
-    ): Array<StatInfos> {
-        val statInfosArray = Array<StatInfos>(iterations) { null }
-        _phase(iterations, setUp, statInfosArray, test, namePrefix, tearDown)
-        return statInfosArray
-    }
+    private fun <SV, TV> warmUpPhase(phaseData: PhaseData<SV, TV>) {
+        val warmUpStatInfosArray = phase(phaseData, WARM_UP)
 
-    private fun <K, T> warmUpPhase(
-        warmUpIterations: Int,
-        namePrefix: String,
-        setUp: (TestData<K, T>) -> Unit,
-        test: (TestData<K, T>) -> Unit,
-        tearDown: (TestData<K, T>) -> Unit
-    ) {
-        val warmUpStatInfosArray = Array<StatInfos>(warmUpIterations) { null }
-        _phase(warmUpIterations, setUp, warmUpStatInfosArray, test, namePrefix, tearDown)
-
-        printWarmUpTimings(namePrefix, warmUpStatInfosArray)
+        if (phaseData.testName != WARM_UP) {
+            printWarmUpTimings(phaseData.testName, warmUpStatInfosArray)
+        }
 
         warmUpStatInfosArray.filterNotNull().map { it[ERROR_KEY] as? Exception }.firstOrNull()?.let { throw it }
     }
 
-    private fun <K, T> _phase(
-        iterations: Int,
-        setUp: (TestData<K, T>) -> Unit,
-        statInfosArray: Array<StatInfos>,
-        test: (TestData<K, T>) -> Unit,
-        namePrefix: String,
-        tearDown: (TestData<K, T>) -> Unit
-    ) {
-        val testData = TestData<K, T>(null, null)
+    private fun <SV, TV> mainPhase(phaseData: PhaseData<SV, TV>): Array<StatInfos> {
+        val statInfosArray = phase(phaseData, "")
+
+        // do not estimate stability for warm-up
+        if (!phaseData.testName.contains(WARM_UP)) {
+            val calcMean = calcMean(statInfosArray)
+            val stabilityPercentage = round(calcMean.stdDev * 100.0 / calcMean.mean).toInt()
+            logMessage { "${phaseData.testName} stability is $stabilityPercentage %" }
+            check(stabilityPercentage <= 10) { "${phaseData.testName} is not stable: stability above $stabilityPercentage %" }
+        }
+
+        return statInfosArray
+    }
+
+    private fun <SV, TV> phase(phaseData: PhaseData<SV, TV>, phaseName: String): Array<StatInfos> {
+        val statInfosArray = Array<StatInfos>(phaseData.iterations) { null }
+        val testData = TestData<SV, TV>(null, null)
+
         try {
-            for (attempt in 0 until iterations) {
+            for (attempt in 0 until phaseData.iterations) {
                 testData.reset()
                 triggerGC(attempt)
 
-                val setUpMillis = measureTimeMillis {
-                    setUp(testData)
-                }
+                val phaseProfiler = createPhaseProfiler(phaseData, phaseName, attempt)
+
+                val setUpMillis = measureTimeMillis { phaseData.setUp(testData) }
                 logMessage { "setup took $setUpMillis ms" }
+
                 val valueMap = HashMap<String, Any>(2 * PerformanceCounter.numberOfCounters + 1)
                 statInfosArray[attempt] = valueMap
                 try {
+
+                    phaseProfiler.start()
                     valueMap[TEST_KEY] = measureNanoTime {
-                        test(testData)
+                        phaseData.test(testData)
                     }
+                    phaseProfiler.stop()
+
                     PerformanceCounter.report { name, counter, nanos ->
                         valueMap["counter \"$name\": count"] = counter.toLong()
                         valueMap["counter \"$name\": time"] = nanos.nsToMs
                     }
 
                 } catch (t: Throwable) {
-                    println("# error at $namePrefix #$attempt:")
+                    println("# error at ${phaseData.testName} #$attempt:")
                     t.printStackTrace()
                     valueMap[ERROR_KEY] = t
                 } finally {
                     try {
                         val tearDownMillis = measureTimeMillis {
-                            tearDown(testData)
+                            phaseData.tearDown(testData)
                         }
                         logMessage { "tearDown took $tearDownMillis ms" }
                     } finally {
@@ -234,8 +261,27 @@ class Stats(val name: String = "", val header: Array<String> = arrayOf("Name", "
                 }
             }
         } catch (t: Throwable) {
-            println("error at $namePrefix:")
-            tcPrintErrors(namePrefix, listOf(t))
+            println("error at ${phaseData.testName}:")
+            tcPrintErrors(phaseData.testName, listOf(t))
+        }
+        return statInfosArray
+    }
+
+    private fun <K, T> createPhaseProfiler(
+        phaseData: PhaseData<K, T>,
+        phaseName: String,
+        attempt: Int
+    ): PhaseProfiler {
+        val profilerHandler = if (phaseData.profileEnabled) ProfilerHandler.getInstance() else DummyProfilerHandler
+
+        return if (profilerHandler != DummyProfilerHandler) {
+            val profilerPath = pathToResource("profile/${plainname()}/")
+            check(with(File(profilerPath)) { exists() || mkdirs() }) { "unable to mkdirs $profilerPath for ${phaseData.testName}" }
+            val activityName = "${phaseData.testName}-${if (phaseName.isEmpty()) "" else "$phaseName-"}$attempt"
+
+            ActualPhaseProfiler(activityName, profilerPath, profilerHandler)
+        } else {
+            dummyPhaseProfiler
         }
     }
 
@@ -264,6 +310,13 @@ class Stats(val name: String = "", val header: Array<String> = arrayOf("Name", "
     companion object {
         const val TEST_KEY = "test"
         const val ERROR_KEY = "error"
+
+        const val WARM_UP = "warm-up"
+
+        private val dummyPhaseProfiler = object : PhaseProfiler {
+            override fun start() {}
+            override fun stop() {}
+        }
 
         inline fun runAndMeasure(note: String, block: () -> Unit) {
             val openProjectMillis = measureTimeMillis {
@@ -332,9 +385,35 @@ class Stats(val name: String = "", val header: Array<String> = arrayOf("Name", "
             }
         }
     }
+
+    private interface PhaseProfiler {
+        fun start()
+
+        fun stop()
+    }
+
+    private class ActualPhaseProfiler(val activityName: String, val profilerPath: String, val profilerHandler: ProfilerHandler) :
+        PhaseProfiler {
+        override fun start() {
+            profilerHandler.startProfiling(activityName)
+        }
+
+        override fun stop() {
+            profilerHandler.stopProfiling(profilerPath, activityName)
+        }
+    }
 }
 
-data class TestData<SV, V>(var setUpValue: SV?, var value: V?) {
+data class PhaseData<SV, TV>(
+    val iterations: Int,
+    val testName: String,
+    val setUp: (TestData<SV, TV>) -> Unit,
+    val test: (TestData<SV, TV>) -> Unit,
+    val tearDown: (TestData<SV, TV>) -> Unit,
+    val profileEnabled: Boolean = false
+)
+
+data class TestData<SV, TV>(var setUpValue: SV?, var value: TV?) {
     fun reset() {
         setUpValue = null
         value = null

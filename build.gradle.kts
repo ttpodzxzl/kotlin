@@ -6,13 +6,13 @@ import proguard.gradle.ProGuardTask
 
 buildscript {
     extra["defaultSnapshotVersion"] = "1.3-SNAPSHOT"
+    val cacheRedirectorEnabled = findProperty("cacheRedirectorEnabled")?.toString()?.toBoolean() == true
 
-    kotlinBootstrapFrom(BootstrapOption.TeamCity("1.3.60-dev-770", onlySuccessBootstrap = false))
+    kotlinBootstrapFrom(BootstrapOption.BintrayBootstrap("1.3.60-dev-770", cacheRedirectorEnabled))
 
     repositories {
         bootstrapKotlinRepo?.let(::maven)
 
-        val cacheRedirectorEnabled = findProperty("cacheRedirectorEnabled")?.toString()?.toBoolean() == true
         if (cacheRedirectorEnabled) {
             maven("https://cache-redirector.jetbrains.com/plugins.gradle.org/m2")
         } else {
@@ -169,7 +169,7 @@ extra["versions.trove4j"] = "1.0.20181211"
 extra["versions.ktor-network"] = "1.0.1"
 
 if (!project.hasProperty("versions.kotlin-native")) {
-    extra["versions.kotlin-native"] = "1.3.50-dev-11052"
+    extra["versions.kotlin-native"] = "1.3.60-dev-12485"
 }
 
 val isTeamcityBuild = project.kotlinBuildProperties.isTeamcityBuild
@@ -234,6 +234,7 @@ extra["compilerModules"] = arrayOf(
     ":core:metadata.jvm",
     ":core:descriptors",
     ":core:descriptors.jvm",
+    ":core:descriptors.runtime",
     ":core:deserialization",
     ":core:util.runtime",
     ":core:type-system",
@@ -524,6 +525,7 @@ tasks {
         dependsOn("dist")
         dependsOn(":kotlin-script-util:test")
         dependsOn(":kotlin-scripting-compiler:test")
+        dependsOn(":kotlin-scripting-common:test")
         dependsOn(":kotlin-scripting-jvm-host-test:test")
         dependsOn(":kotlin-scripting-jsr223-test:test")
         dependsOn(":kotlin-scripting-jvm-host-test:embeddableTest")

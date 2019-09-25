@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
 import org.jetbrains.kotlin.codegen.AsmUtil
 import org.jetbrains.kotlin.codegen.ClassBuilderMode
-import org.jetbrains.kotlin.codegen.OwnerKind
 import org.jetbrains.kotlin.codegen.visitAnnotableParameterCount
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.declarations.*
@@ -44,9 +43,10 @@ open class FunctionCodegen(
         }
 
     private fun doGenerate(): JvmMethodGenericSignature {
-        val signature = classCodegen.methodSignatureMapper.mapSignatureWithGeneric(irFunction, OwnerKind.IMPLEMENTATION)
+        val functionView = irFunction.getOrCreateSuspendFunctionViewIfNeeded(context)
+        val signature = classCodegen.methodSignatureMapper.mapSignatureWithGeneric(functionView)
 
-        val flags = calculateMethodFlags(irFunction.isStatic)
+        val flags = calculateMethodFlags(functionView.isStatic)
         var methodVisitor = createMethod(flags, signature)
 
         val hasSyntheticFlag = flags.and(Opcodes.ACC_SYNTHETIC) != 0
@@ -56,7 +56,7 @@ open class FunctionCodegen(
 
         if (irFunction.origin != IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER) {
             AnnotationCodegen(classCodegen, context, methodVisitor::visitAnnotation).genAnnotations(
-                irFunction,
+                functionView,
                 signature.asmMethod.returnType
             )
         }
@@ -70,7 +70,7 @@ open class FunctionCodegen(
             //TODO: investigate this case: annotation here is generated twice in lowered function and in interface method overload
             irFunction.origin == JvmLoweredDeclarationOrigin.GENERATED_SAM_IMPLEMENTATION
         ) {
-            generateParameterAnnotations(irFunction, methodVisitor, signature, classCodegen, context)
+            generateParameterAnnotations(functionView, methodVisitor, signature, classCodegen, context)
         }
 
         if (!state.classBuilderMode.generateBodies || flags.and(Opcodes.ACC_ABSTRACT) != 0 || irFunction.isExternal) {
@@ -82,15 +82,20 @@ open class FunctionCodegen(
                 ?: context.suspendLambdaToOriginalFunctionMap[irFunction.parent]?.symbol?.descriptor?.psiElement) as? KtElement
             val continuationClassBuilder = context.continuationClassBuilders[irClass]
             methodVisitor = when {
-                irFunction.isSuspend -> generateStateMachineForNamedFunction(
-                    irFunction, classCodegen, methodVisitor, flags, signature, continuationClassBuilder, element!!
-                )
+                irFunction.isSuspend &&
+                        // We do not generate continuation and state-machine for synthetic accessors, in a sense, they are tail-call
+                        !irFunction.isKnownToBeTailCall() &&
+                        // TODO: We should generate two versions of inline suspend function: one with state-machine and one without
+                        !irFunction.isInline ->
+                    generateStateMachineForNamedFunction(
+                        irFunction, classCodegen, methodVisitor, flags, signature, continuationClassBuilder, element!!
+                    )
                 irFunction.isInvokeSuspendOfLambda(context) -> generateStateMachineForLambda(
                     classCodegen, methodVisitor, flags, signature, element!!
                 )
                 else -> methodVisitor
             }
-            ExpressionCodegen(irFunction, frameMap, InstructionAdapter(methodVisitor), classCodegen, isInlineLambda).generate()
+            ExpressionCodegen(functionView, signature, frameMap, InstructionAdapter(methodVisitor), classCodegen, isInlineLambda).generate()
             methodVisitor.visitMaxs(-1, -1)
             continuationClassBuilder?.done()
         }
@@ -98,6 +103,9 @@ open class FunctionCodegen(
 
         return signature
     }
+
+    private fun IrFunction.isKnownToBeTailCall(): Boolean =
+        origin == IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER || origin == JvmLoweredDeclarationOrigin.SYNTHETIC_ACCESSOR
 
     private fun calculateMethodFlags(isStatic: Boolean): Int {
         if (irFunction.origin == IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER) {
@@ -183,15 +191,17 @@ open class FunctionCodegen(
 
     private fun createFrameMapWithReceivers(signature: JvmMethodSignature): IrFrameMap {
         val frameMap = IrFrameMap()
+        val functionView = irFunction.getOrCreateSuspendFunctionViewIfNeeded(context)
+
         if (irFunction is IrConstructor) {
             frameMap.enterDispatchReceiver(irFunction.constructedClass.thisReceiver!!)
-        } else if (irFunction.dispatchReceiverParameter != null) {
-            frameMap.enterDispatchReceiver(irFunction.dispatchReceiverParameter!!)
+        } else if (functionView.dispatchReceiverParameter != null) {
+            frameMap.enterDispatchReceiver(functionView.dispatchReceiverParameter!!)
         }
 
         for (parameter in signature.valueParameters) {
             if (parameter.kind == JvmMethodParameterKind.RECEIVER) {
-                val receiverParameter = irFunction.extensionReceiverParameter
+                val receiverParameter = functionView.extensionReceiverParameter
                 if (receiverParameter != null) {
                     frameMap.enter(receiverParameter, classCodegen.typeMapper.mapType(receiverParameter))
                 } else {
@@ -202,7 +212,7 @@ open class FunctionCodegen(
             }
         }
 
-        for (parameter in irFunction.valueParameters) {
+        for (parameter in functionView.valueParameters) {
             frameMap.enter(parameter, classCodegen.typeMapper.mapType(parameter.type))
         }
 

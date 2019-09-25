@@ -51,6 +51,11 @@ public class FirCfgBuildingTestGenerated extends AbstractFirCfgBuildingTest {
             runTest("compiler/fir/resolve/testData/resolve/cfg/initBlock.kt");
         }
 
+        @TestMetadata("initBlockAndInPlaceLambda.kt")
+        public void testInitBlockAndInPlaceLambda() throws Exception {
+            runTest("compiler/fir/resolve/testData/resolve/cfg/initBlockAndInPlaceLambda.kt");
+        }
+
         @TestMetadata("jumps.kt")
         public void testJumps() throws Exception {
             runTest("compiler/fir/resolve/testData/resolve/cfg/jumps.kt");
@@ -132,6 +137,11 @@ public class FirCfgBuildingTestGenerated extends AbstractFirCfgBuildingTest {
         @TestMetadata("equalsToBoolean.kt")
         public void testEqualsToBoolean() throws Exception {
             runTest("compiler/fir/resolve/testData/resolve/smartcasts/equalsToBoolean.kt");
+        }
+
+        @TestMetadata("implicitReceivers.kt")
+        public void testImplicitReceivers() throws Exception {
+            runTest("compiler/fir/resolve/testData/resolve/smartcasts/implicitReceivers.kt");
         }
 
         @TestMetadata("inPlaceLambdas.kt")

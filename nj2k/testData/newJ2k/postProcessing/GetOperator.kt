@@ -1,6 +1,5 @@
 import javaApi.JavaClass
 import kotlinApi.KotlinClass
-import java.util.HashMap
 
 internal class X {
     operator fun get(index: Int): Int {
@@ -22,6 +21,6 @@ internal class C {
     }
 
     fun foo(javaClass: JavaClass): Int {
-        return javaClass.get(0)
+        return javaClass[0]
     }
 }

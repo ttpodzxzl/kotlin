@@ -24,9 +24,9 @@ import org.jetbrains.kotlin.fir.resolve.calls.SyntheticPropertySymbol
 import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.scopes.ProcessorAction
 import org.jetbrains.kotlin.fir.scopes.impl.FirClassSubstitutionScope
-import org.jetbrains.kotlin.fir.symbols.ConeClassLikeLookupTagImpl
 import org.jetbrains.kotlin.fir.symbols.impl.*
 import org.jetbrains.kotlin.fir.types.*
+import org.jetbrains.kotlin.fir.visitors.FirDefaultVisitor
 import org.jetbrains.kotlin.fir.visitors.FirVisitor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -54,14 +54,14 @@ import org.jetbrains.kotlin.types.AbstractStrictEqualityTypeChecker
 import org.jetbrains.kotlin.types.Variance
 import java.util.*
 
-internal class Fir2IrVisitor(
+class Fir2IrVisitor(
     private val session: FirSession,
     private val moduleDescriptor: FirModuleDescriptor,
     private val symbolTable: SymbolTable,
     private val sourceManager: PsiSourceManager,
     override val irBuiltIns: IrBuiltIns,
     private val fakeOverrideMode: FakeOverrideMode
-) : FirVisitor<IrElement, Any?>(), IrGeneratorContextInterface {
+) : FirDefaultVisitor<IrElement, Any?>(), IrGeneratorContextInterface {
     companion object {
         private val NEGATED_OPERATIONS: Set<FirOperation> = EnumSet.of(FirOperation.NOT_EQ, FirOperation.NOT_IDENTITY)
 
@@ -665,7 +665,7 @@ internal class Fir2IrVisitor(
     private fun FirReference.statementOrigin(): IrStatementOrigin? {
         return when (this) {
             is FirPropertyFromParameterCallableReference -> IrStatementOrigin.INITIALIZE_PROPERTY_FROM_PARAMETER
-            is FirResolvedCallableReference -> when (coneSymbol) {
+            is FirResolvedCallableReference -> when (resolvedSymbol) {
                 is FirAccessorSymbol, is SyntheticPropertySymbol -> IrStatementOrigin.GET_PROPERTY
                 else -> null
             }
@@ -1250,7 +1250,7 @@ internal class Fir2IrVisitor(
                 )
             }
         }
-        return super.visitResolvedQualifier(resolvedQualifier, data)
+        return visitElement(resolvedQualifier, data)
     }
 
     override fun visitBinaryLogicExpression(binaryLogicExpression: FirBinaryLogicExpression, data: Any?): IrElement {

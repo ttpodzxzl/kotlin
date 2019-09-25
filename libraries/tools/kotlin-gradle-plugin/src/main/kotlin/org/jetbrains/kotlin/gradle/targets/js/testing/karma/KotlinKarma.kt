@@ -12,7 +12,6 @@ import org.gradle.api.internal.tasks.testing.TestResultProcessor
 import org.gradle.internal.logging.progress.ProgressLogger
 import org.gradle.process.ProcessForkOptions
 import org.jetbrains.kotlin.gradle.internal.operation
-import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesClient
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesClientSettings
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesTestExecutionSpec
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJsCompilation
@@ -22,9 +21,7 @@ import org.jetbrains.kotlin.gradle.targets.js.appendConfigsFromDir
 import org.jetbrains.kotlin.gradle.targets.js.internal.parseNodeJsStackTraceAsJvm
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin
 import org.jetbrains.kotlin.gradle.targets.js.npm.npmProject
-import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
-import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTestFramework
-import org.jetbrains.kotlin.gradle.targets.js.testing.karma.KarmaConfig.CoverageReporter.Reporter
+import org.jetbrains.kotlin.gradle.targets.js.testing.*
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 import org.jetbrains.kotlin.gradle.testing.internal.reportsDir
 import org.slf4j.Logger
@@ -53,7 +50,7 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
     init {
         requiredDependencies.add(versions.karma)
 
-        useTeamcityReporter()
+        useLogReporter()
         useMocha()
         useWebpack()
         useSourceMapSupport()
@@ -62,9 +59,125 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
         config.autoWatch = false
     }
 
-    private fun useTeamcityReporter() {
+    // This reporter extends karma-teamcity-reporter
+    //  It is necessary, because karma-teamcity-reporter can't write browser's log
+    //  And additionally it overrides flushLogs, because flushLogs adds redundant spaces after some messages
+    private fun useLogReporter() {
         requiredDependencies.add(versions.karmaTeamcityReporter)
-        config.reporters.add("teamcity")
+        config.reporters.add("karma-browser-log-reporter")
+
+        confJsWriters.add {
+            //language=ES6
+            it.appendln(
+                """
+                // reporter for browser logs
+                (function () {
+                    const util = require('util');
+
+                    const escapeMessage = function (message) {
+                        if (message === null || message === undefined) {
+                            return ''
+                        }
+
+                        return message.toString()
+                            .replace(/\|/g, '||')
+                            .replace(/'/g, "|'")
+                            .replace(/\n/g, '|n')
+                            .replace(/\r/g, '|r')
+                            .replace(/\u0085/g, '|x')
+                            .replace(/\u2028/g, '|l')
+                            .replace(/\u2029/g, '|p')
+                            .replace(/\[/g, '|[')
+                            .replace(/\]/g, '|]')
+                    };
+            
+                    var formatMessage = function () {
+                        var args = Array.prototype.slice.call(arguments);
+            
+                        for (var i = args.length - 1; i > 0; i--) {
+                            args[i] = escapeMessage(args[i])
+                        }
+            
+                        return util.format.apply(null, args) + '\n'
+                    };
+            
+                    const LogReporter = function (baseReporterDecorator) {
+                        const teamcityReporter = require("karma-teamcity-reporter")["reporter:teamcity"][1];
+                        teamcityReporter.call(this, baseReporterDecorator);
+
+                        this.TEST_STD_OUT = "##teamcity[testStdOut name='%s' out='%s' flowId='']";
+                        
+                        const tcOnBrowserStart = this.onBrowserStart;
+                        this.onBrowserStart = function (browser) {
+                            tcOnBrowserStart.call(this, browser);
+                            this.browserResults[browser.id].consoleCollector = [];
+                        };
+            
+                        this.onBrowserLog = (browser, log, type) => {
+                            var browserResult = this.browserResults[browser.id];
+                            if (browserResult) {
+                                browserResult.consoleCollector.push(`[${"$"}{type}] ${"$"}{log}\n`)
+                            }
+                        };
+            
+                        const tcSpecSuccess = this.specSuccess;
+                        this.specSuccess = function (browser, result) {
+                            tcSpecSuccess.call(this, browser, result);
+
+                            var log = this.getLog(browser, result);
+                            var testName = result.description;
+                        
+                            const endMessage = log.pop();
+                            this.browserResults[browser.id].consoleCollector.forEach(item => {
+                              log.push(
+                              formatMessage(this.TEST_STD_OUT, testName, item)
+                              )
+                           });
+                           log.push(endMessage);
+                        
+                           this.browserResults[browser.id].consoleCollector = []
+                        };
+            
+                        const tcSpecFailure = this.specFailure;
+                        this.specFailure = function (browser, result) {
+                            tcSpecFailure.call(this, browser, result);
+                            var log = this.getLog(browser, result);
+                            var testName = result.description;
+                        
+                            const endMessage = log.pop();
+                            const failedMessage = log.pop();
+                            this.browserResults[browser.id].consoleCollector.forEach(item => {
+                              log.push(
+                                formatMessage(this.TEST_STD_OUT, testName, item)
+                              )
+                            });
+                            log.push(failedMessage);
+                            log.push(endMessage);
+                        
+                            this.browserResults[browser.id].consoleCollector = []
+                        };
+                        
+                        this.flushLogs = function (browserResult) {
+                            while (browserResult.log.length > 0) {
+                                var line = browserResult.log.shift();
+                                line = line.replace("flowId=''", "flowId='" + browserResult.flowId + "'");
+                            
+                                this.write(line);
+                            }
+  }
+                    };
+                    
+                    LogReporter.${"$"}inject = ['baseReporterDecorator'];
+            
+                    config.plugins = config.plugins || [];
+                    config.plugins.push('karma-*'); // default
+                    config.plugins.push({
+                        'reporter:karma-browser-log-reporter': ['type', LogReporter]
+                    });
+                })();
+            """.trimIndent()
+            )
+        }
     }
 
     internal fun watch() {
@@ -130,6 +243,9 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
     }
 
     private fun useWebpack() {
+        createAdapterJs()
+        requiredDependencies.add(versions.browserProcessHrtime)
+
         requiredDependencies.add(versions.karmaWebpack)
         requiredDependencies.add(versions.webpack)
 
@@ -188,7 +304,7 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
             val reportDir = project.reportsDir.resolve("coverage/${it.name}")
             reportDir.mkdirs()
 
-            config.coverageReporter = KarmaConfig.CoverageReporter(reportDir.canonicalPath).also { coverage ->
+            config.coverageReporter = CoverageReporter(reportDir.canonicalPath).also { coverage ->
                 if (html) coverage.reporters.add(Reporter("html"))
                 if (lcov) coverage.reporters.add(Reporter("lcovonly"))
                 if (cobertura) coverage.reporters.add(Reporter("cobertura"))
@@ -221,6 +337,25 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
         }
     }
 
+    private fun createAdapterJs() {
+        configurators.add {
+            val npmProject = compilation.npmProject
+            val files = it.nodeModulesToLoad.map { npmProject.require(it) }
+
+            val adapterJs = npmProject.dir.resolve("adapter.js")
+            adapterJs.printWriter().use { writer ->
+                val karmaRunner = npmProject.require("kotlin-test-js-runner/kotlin-test-karma-runner.js")
+                writer.println("require('$karmaRunner')")
+
+                files.forEach { file ->
+                    writer.println("require('$file')")
+                }
+            }
+
+            config.files.add(adapterJs.canonicalPath)
+        }
+    }
+
     override fun createTestExecutionSpec(
         task: KotlinJsTest,
         forkOptions: ProcessForkOptions,
@@ -240,14 +375,18 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
 
         val npmProject = compilation.npmProject
 
-        val files = task.nodeModulesToLoad.map { npmProject.require(it) }
-        config.files.addAll(files)
-
         config.basePath = npmProject.nodeModulesDir.absolutePath
 
         configurators.forEach {
             it(task)
         }
+
+        val cliArgs = KotlinTestRunnerCliArgs(
+            include = task.includePatterns,
+            exclude = task.excludePatterns
+        )
+
+        config.client.args.addAll(cliArgs.toList())
 
         val karmaConfJs = npmProject.dir.resolve("karma.conf.js")
         karmaConfJs.printWriter().use { confWriter ->
@@ -279,36 +418,44 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
                 nodeModules.map { npmProject.require(it) } +
                 listOf("start", karmaConfJs.absolutePath, "--debug")
 
-        return object : TCServiceMessagesTestExecutionSpec(
+        return object : JSServiceMessagesTestExecutionSpec(
             forkOptions,
             args,
             false,
             clientSettings
         ) {
             lateinit var progressLogger: ProgressLogger
-            val suppressedOutput = StringBuilder()
+
+            var isLaunchFailed: Boolean = false
 
             override fun wrapExecute(body: () -> Unit) {
                 project.operation("Running and building tests with karma and webpack") {
                     progressLogger = this
                     body()
+
+                    if (isLaunchFailed) {
+                        showSuppressedOutput()
+                        throw IllegalStateException("Launch of some browsers was failed")
+                    }
                 }
             }
 
-            override fun showSuppressedOutput() {
-                println(suppressedOutput)
-            }
-
             override fun createClient(testResultProcessor: TestResultProcessor, log: Logger) =
-                object : TCServiceMessagesClient(testResultProcessor, clientSettings, log) {
-                    override fun printNonTestOutput(actualText: String) {
-                        val value = actualText.trimEnd()
-                        suppressedOutput.appendln(value)
-                        progressLogger.progress(value)
-                    }
-
+                object : JSServiceMessagesClient(
+                    testResultProcessor,
+                    clientSettings,
+                    log,
+                    suppressedOutput
+                ) {
                     val baseTestNameSuffix get() = settings.testNameSuffix
                     override var testNameSuffix: String? = baseTestNameSuffix
+
+                    override fun printNonTestOutput(text: String) {
+                        val value = text.trimEnd()
+                        progressLogger.progress(value)
+
+                        parseConsole(value)
+                    }
 
                     override fun getSuiteName(message: BaseTestSuiteMessage): String {
                         val src = message.suiteName.trim()
@@ -335,6 +482,16 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
 
                         return rawSuiteNameOnly.replace(" ", ".") // sample.a.DeepPackageTest.Inner
                     }
+
+                    private fun parseConsole(text: String) {
+                        if (KARMA_PROBLEM.matches(text)) {
+                            log.error(text)
+                            isLaunchFailed = true
+                            return
+                        }
+
+                        super.printNonTestOutput(text)
+                    }
                 }
         }
     }
@@ -354,5 +511,7 @@ class KotlinKarma(override val compilation: KotlinJsCompilation) : KotlinJsTestF
     companion object {
         const val CHROME_BIN = "CHROME_BIN"
         const val CHROME_CANARY_BIN = "CHROME_CANARY_BIN"
+
+        val KARMA_PROBLEM = "(?m)^.*\\d{2} \\d{2} \\d{4,} \\d{2}:\\d{2}:\\d{2}.\\d{3}:(ERROR|WARN) \\[.*]: (.*)\$".toRegex()
     }
 }

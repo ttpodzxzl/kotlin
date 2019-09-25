@@ -46,6 +46,11 @@ public class FirDiagnosticsTestGenerated extends AbstractFirDiagnosticsTest {
             runTest("compiler/fir/resolve/testData/diagnostics/j+k/complexFlexibleInference.kt");
         }
 
+        @TestMetadata("FunctionTypeInJava.kt")
+        public void testFunctionTypeInJava() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/j+k/FunctionTypeInJava.kt");
+        }
+
         @TestMetadata("KJKComplexHierarchy.kt")
         public void testKJKComplexHierarchy() throws Exception {
             runTest("compiler/fir/resolve/testData/diagnostics/j+k/KJKComplexHierarchy.kt");
@@ -84,6 +89,97 @@ public class FirDiagnosticsTestGenerated extends AbstractFirDiagnosticsTest {
         @TestMetadata("outerInnerClasses.kt")
         public void testOuterInnerClasses() throws Exception {
             runTest("compiler/fir/resolve/testData/diagnostics/j+k/outerInnerClasses.kt");
+        }
+    }
+
+    @TestMetadata("compiler/fir/resolve/testData/diagnostics/samConstructors")
+    @TestDataPath("$PROJECT_ROOT")
+    @RunWith(JUnit3RunnerWithInners.class)
+    public static class SamConstructors extends AbstractFirDiagnosticsTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+        }
+
+        public void testAllFilesPresentInSamConstructors() throws Exception {
+            KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/fir/resolve/testData/diagnostics/samConstructors"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
+        }
+
+        @TestMetadata("genericSam.kt")
+        public void testGenericSam() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConstructors/genericSam.kt");
+        }
+
+        @TestMetadata("genericSamInferenceFromExpectType.kt")
+        public void testGenericSamInferenceFromExpectType() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConstructors/genericSamInferenceFromExpectType.kt");
+        }
+
+        @TestMetadata("kotlinSam.kt")
+        public void testKotlinSam() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConstructors/kotlinSam.kt");
+        }
+
+        @TestMetadata("realConstructorFunction.kt")
+        public void testRealConstructorFunction() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConstructors/realConstructorFunction.kt");
+        }
+
+        @TestMetadata("runnable.kt")
+        public void testRunnable() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConstructors/runnable.kt");
+        }
+
+        @TestMetadata("simple.kt")
+        public void testSimple() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConstructors/simple.kt");
+        }
+    }
+
+    @TestMetadata("compiler/fir/resolve/testData/diagnostics/samConversions")
+    @TestDataPath("$PROJECT_ROOT")
+    @RunWith(JUnit3RunnerWithInners.class)
+    public static class SamConversions extends AbstractFirDiagnosticsTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+        }
+
+        public void testAllFilesPresentInSamConversions() throws Exception {
+            KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/fir/resolve/testData/diagnostics/samConversions"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
+        }
+
+        @TestMetadata("genericSam.kt")
+        public void testGenericSam() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConversions/genericSam.kt");
+        }
+
+        @TestMetadata("kotlinSam.kt")
+        public void testKotlinSam() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConversions/kotlinSam.kt");
+        }
+
+        @TestMetadata("notSamBecauseOfSupertype.kt")
+        public void testNotSamBecauseOfSupertype() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConversions/notSamBecauseOfSupertype.kt");
+        }
+
+        @TestMetadata("runnable.kt")
+        public void testRunnable() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConversions/runnable.kt");
+        }
+
+        @TestMetadata("samSupertype.kt")
+        public void testSamSupertype() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConversions/samSupertype.kt");
+        }
+
+        @TestMetadata("samSupertypeWithOverride.kt")
+        public void testSamSupertypeWithOverride() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConversions/samSupertypeWithOverride.kt");
+        }
+
+        @TestMetadata("simple.kt")
+        public void testSimple() throws Exception {
+            runTest("compiler/fir/resolve/testData/diagnostics/samConversions/simple.kt");
         }
     }
 }

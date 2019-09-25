@@ -2388,6 +2388,11 @@ public class NewJavaToKotlinConverterSingleFileTestGenerated extends AbstractNew
             runTest("nj2k/testData/newJ2k/function/mainAndNullabilitySetting.java");
         }
 
+        @TestMetadata("mainVararg.java")
+        public void testMainVararg() throws Exception {
+            runTest("nj2k/testData/newJ2k/function/mainVararg.java");
+        }
+
         @TestMetadata("methodClassType.java")
         public void testMethodClassType() throws Exception {
             runTest("nj2k/testData/newJ2k/function/methodClassType.java");
@@ -4075,6 +4080,11 @@ public class NewJavaToKotlinConverterSingleFileTestGenerated extends AbstractNew
         public void testParenthesized2() throws Exception {
             runTest("nj2k/testData/newJ2k/parenthesizedExpression/parenthesized2.java");
         }
+
+        @TestMetadata("parenthesized3.java")
+        public void testParenthesized3() throws Exception {
+            runTest("nj2k/testData/newJ2k/parenthesizedExpression/parenthesized3.java");
+        }
     }
 
     @TestMetadata("nj2k/testData/newJ2k/polyadicExpression")
@@ -4469,6 +4479,21 @@ public class NewJavaToKotlinConverterSingleFileTestGenerated extends AbstractNew
         @TestMetadata("PrivateStaticMethods4.java")
         public void testPrivateStaticMethods4() throws Exception {
             runTest("nj2k/testData/newJ2k/staticMembers/PrivateStaticMethods4.java");
+        }
+
+        @TestMetadata("StaticImport.java")
+        public void testStaticImport() throws Exception {
+            runTest("nj2k/testData/newJ2k/staticMembers/StaticImport.java");
+        }
+
+        @TestMetadata("StaticMemmberAccessedViaInstance.java")
+        public void testStaticMemmberAccessedViaInstance() throws Exception {
+            runTest("nj2k/testData/newJ2k/staticMembers/StaticMemmberAccessedViaInstance.java");
+        }
+
+        @TestMetadata("StaticQualifiedByInheritor.java")
+        public void testStaticQualifiedByInheritor() throws Exception {
+            runTest("nj2k/testData/newJ2k/staticMembers/StaticQualifiedByInheritor.java");
         }
     }
 

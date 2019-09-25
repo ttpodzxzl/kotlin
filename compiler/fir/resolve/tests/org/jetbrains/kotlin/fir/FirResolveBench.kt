@@ -8,11 +8,14 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.fir.builder.RawFirBuilder
 import org.jetbrains.kotlin.fir.declarations.FirFile
+import org.jetbrains.kotlin.fir.expressions.FirCallableReferenceAccess
+import org.jetbrains.kotlin.fir.expressions.FirComponentCall
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.resolve.FirProvider
 import org.jetbrains.kotlin.fir.resolve.impl.FirProviderImpl
 import org.jetbrains.kotlin.fir.types.*
+import org.jetbrains.kotlin.fir.visitors.FirDefaultVisitorVoid
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.psi.KtFile
@@ -170,7 +173,7 @@ class FirResolveBench(val withProgress: Boolean) {
             val fileDocumentManager = FileDocumentManager.getInstance()
 
             firFiles.forEach {
-                it.accept(object : FirVisitorVoid() {
+                it.accept(object : FirDefaultVisitorVoid() {
 
                     fun reportProblem(problem: String, psi: PsiElement) {
                         val document = try {
@@ -197,7 +200,7 @@ class FirResolveBench(val withProgress: Boolean) {
                             }
                         }
 
-                        super.visitFunctionCall(functionCall)
+                        visitElement(functionCall)
                     }
 
                     override fun visitQualifiedAccessExpression(qualifiedAccessExpression: FirQualifiedAccessExpression) {
@@ -209,7 +212,7 @@ class FirResolveBench(val withProgress: Boolean) {
                             }
                         }
 
-                        super.visitQualifiedAccessExpression(qualifiedAccessExpression)
+                        visitElement(qualifiedAccessExpression)
                     }
 
                     override fun visitTypeRef(typeRef: FirTypeRef) {
@@ -319,19 +322,20 @@ fun <T> Collection<T>.progress(step: Double = 0.1, computeLabel: (T) -> String):
     }
 }
 
-fun FirResolveBench.TotalStatistics.report(stream: PrintStream, header: String, errorTypeReports: Boolean = true) {
-    with(stream) {
-        if (errorTypeReports)
-            errorTypesReports.values.sortedByDescending { it.count }.forEach {
-                print("${it.count}:")
-                println(it.report)
-            }
+fun FirResolveBench.TotalStatistics.reportErrors(stream: PrintStream) {
+    errorTypesReports.values.sortedByDescending { it.count }.forEach {
+        stream.print("${it.count}:")
+        stream.println(it.report)
+    }
+}
 
+fun FirResolveBench.TotalStatistics.report(stream: PrintStream, header: String) {
+    with(stream) {
         infix fun Int.percentOf(other: Int): String {
             return String.format("%.1f%%", this * 100.0 / other)
         }
         println()
-        println("---------- $header ----------")
+        println("========== $header ==========")
         println("Unresolved (untouched) implicit types: $unresolvedTypes (${unresolvedTypes percentOf totalTypes})")
         println("Resolved types: $resolvedTypes (${resolvedTypes percentOf totalTypes})")
         println("Correctly resolved types: $goodTypes (${goodTypes percentOf resolvedTypes} of resolved)")

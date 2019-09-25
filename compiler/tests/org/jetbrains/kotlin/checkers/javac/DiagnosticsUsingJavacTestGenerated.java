@@ -8343,6 +8343,11 @@ public class DiagnosticsUsingJavacTestGenerated extends AbstractDiagnosticsUsing
                     KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/diagnostics/tests/generics/capturedParameters"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
                 }
 
+                @TestMetadata("captured.kt")
+                public void testCaptured() throws Exception {
+                    runTest("compiler/testData/diagnostics/tests/generics/capturedParameters/captured.kt");
+                }
+
                 @TestMetadata("innerLocalClass.kt")
                 public void testInnerLocalClass() throws Exception {
                     runTest("compiler/testData/diagnostics/tests/generics/capturedParameters/innerLocalClass.kt");
@@ -9062,6 +9067,11 @@ public class DiagnosticsUsingJavacTestGenerated extends AbstractDiagnosticsUsing
             @TestMetadata("CheckJavaVisibility.kt")
             public void testCheckJavaVisibility() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/imports/CheckJavaVisibility.kt");
+            }
+
+            @TestMetadata("CheckJavaVisibility2.kt")
+            public void testCheckJavaVisibility2() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/imports/CheckJavaVisibility2.kt");
             }
 
             @TestMetadata("CheckVisibility.kt")
@@ -17581,6 +17591,11 @@ public class DiagnosticsUsingJavacTestGenerated extends AbstractDiagnosticsUsing
             @TestMetadata("localObject.kt")
             public void testLocalObject() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/resolve/localObject.kt");
+            }
+
+            @TestMetadata("newLineLambda.kt")
+            public void testNewLineLambda() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/resolve/newLineLambda.kt");
             }
 
             @TestMetadata("objectLiteralAsArgument.kt")

@@ -38,6 +38,7 @@ private const val FIR_HTML_DUMP_PATH = "tmp/firDump-html"
 private const val FIR_LOGS_PATH = "tmp/fir-logs"
 
 internal val PASSES = System.getProperty("fir.bench.passes")?.toInt() ?: 3
+internal val SEPARATE_PASS_DUMP = System.getProperty("fir.bench.dump.separate_pass", "false") == "true"
 
 class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
 
@@ -81,7 +82,7 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
     private fun ModuleData.disambiguatedName(): String {
         val baseName = qualifiedName
         var disambiguatedName = baseName
-        var counter = 0
+        var counter = 1
         while(!dumpedModules.add(disambiguatedName)) {
             disambiguatedName = "$baseName.${counter++}"
         }
@@ -129,12 +130,15 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
 
     override fun afterPass(pass: Int) {
         val statistics = bench.getTotalStatistics()
-        statistics.report(System.out, "Pass $pass", errorTypeReports = false)
+        statistics.report(System.out, "Pass $pass")
 
         saveReport(pass, statistics)
         if (statistics.totalTime < (bestStatistics?.totalTime ?: Long.MAX_VALUE)) {
             bestStatistics = statistics
             bestPass = pass
+        }
+        if (!SEPARATE_PASS_DUMP) {
+            dumpedModules.clear()
         }
         if (FAIL_FAST) {
             bench.throwFailure()
@@ -143,7 +147,8 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
 
     override fun afterAllPasses() {
         val bestStatistics = bestStatistics ?: return
-        printStatistics(bestStatistics, "Best pass: $bestPass", false)
+        printStatistics(bestStatistics, "Best pass: $bestPass")
+        printErrors(bestStatistics)
     }
 
     private val folderDateFormat = SimpleDateFormat("yyyy-MM-dd")
@@ -169,15 +174,17 @@ class FirResolveModularizedTotalKotlinTest : AbstractModularizedTest() {
         printStatistics(statistics, "PASS $pass")
     }
 
-    private fun printStatistics(statistics: FirResolveBench.TotalStatistics, header: String, errorTypeReports: Boolean = true) {
+    private fun printErrors(statistics: FirResolveBench.TotalStatistics) {
+        PrintStream(FileOutputStream(reportDir().resolve("errors-$reportDateStr.log"), true)).use(statistics::reportErrors)
+    }
+
+    private fun printStatistics(statistics: FirResolveBench.TotalStatistics, header: String) {
         PrintStream(
             FileOutputStream(
                 reportDir().resolve("report-$reportDateStr.log"),
                 true
             )
         ).use { stream ->
-            val sep = "=".repeat(10)
-            stream.println("$sep $header $sep")
             statistics.report(stream, header)
             stream.println()
             stream.println()
