@@ -275,6 +275,10 @@ private val IN_BLOCK_MODIFICATION_COUNT = Key<Long>("IN_BLOCK_MODIFICATION_COUNT
 
 val KtFile.outOfBlockModificationCount: Long by NotNullableUserDataProperty(FILE_OUT_OF_BLOCK_MODIFICATION_COUNT, 0)
 
+/**
+ * inBlockModificationCount means how many changes have been made since last outOfBlockModificationCount for this item
+ * it is reset to 0 on any outOfBlockModificationCount
+ */
 val KtNamedFunction.inBlockModificationCount: Long by NotNullableUserDataProperty(IN_BLOCK_MODIFICATION_COUNT, 0)
 
 fun KtNamedFunction.cleanInBlockModificationCount() {

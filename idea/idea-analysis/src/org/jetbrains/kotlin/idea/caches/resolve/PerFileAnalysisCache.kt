@@ -119,11 +119,11 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
                 if (analyzableParent is KtNamedFunction) {
                     CachedValuesManager.getManager(file.project).createCachedValue(
                         {
+                            val parentCache = cache[file] as? SimpleCachedValue
                             val calculatedAnalysisResult: AnalysisResult =
-                                if (analyzableParent.inBlockModificationCount != 0L) {
+                                if (parentCache != null && analyzableParent.inBlockModificationCount > 0L) {
                                     val result = analyze(analyzableParent)
 
-                                    val parentCache = cache[file] as SimpleCachedValue
                                     val parentAnalysis = parentCache.value
                                     val newBindingCtx = mergeContexts(result, parentAnalysis, analyzableParent)
 
@@ -138,11 +138,11 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
 
                                     newParentAnalysis
                                 } else {
-                                    cache[file]?.value ?: analyze(analyzableParent)
+                                    parentCache?.value ?: analyze(analyzableParent)
                                 }
 
-                            val dependencies = ModificationTracker { analyzableParent.inBlockModificationCount }
-                            CachedValueProvider.Result.create(calculatedAnalysisResult, dependencies)
+                            CachedValueProvider.Result.create(calculatedAnalysisResult,
+                                                              ModificationTracker { analyzableParent.inBlockModificationCount })
                         }, false
                     )
                 } else {
