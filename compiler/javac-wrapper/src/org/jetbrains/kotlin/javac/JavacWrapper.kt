@@ -24,11 +24,8 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.search.EverythingGlobalScope
 import com.intellij.psi.search.GlobalSearchScope
 import com.sun.source.tree.CompilationUnitTree
-import com.sun.tools.javac.code.Flags
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Symtab
-import com.sun.tools.javac.file.JavacFileManager
-import com.sun.tools.javac.jvm.ClassReader
 import com.sun.tools.javac.main.JavaCompiler
 import com.sun.tools.javac.model.JavacElements
 import com.sun.tools.javac.model.JavacTypes
@@ -51,6 +48,7 @@ import javax.lang.model.element.Element
 import javax.lang.model.type.TypeMirror
 import javax.tools.JavaFileManager
 import javax.tools.JavaFileObject
+import javax.tools.StandardJavaFileManager
 import javax.tools.StandardLocation.*
 import com.sun.tools.javac.util.List as JavacList
 
@@ -102,13 +100,13 @@ class JavacWrapper(
         override fun parseFiles(files: Iterable<JavaFileObject>?) = compilationUnits
     }
 
-    private val fileManager = context[JavaFileManager::class.java] as JavacFileManager
+    private val fileManager = context[JavaFileManager::class.java] as StandardJavaFileManager
 
     init {
         // keep javadoc comments
         javac.keepComments = true
         // use rt.jar instead of lib/ct.sym
-        fileManager.setSymbolFileEnabled(false)
+        //fileManager.setSymbolFileEnabled(false)
         bootClasspath?.let {
             val cp = fileManager.getLocation(PLATFORM_CLASS_PATH) + jvmClasspathRoots
             fileManager.setLocation(PLATFORM_CLASS_PATH, it)
@@ -123,7 +121,7 @@ class JavacWrapper(
     private val symTab = Symtab.instance(context)
     private val elements = JavacElements.instance(context)
     private val types = JavacTypes.instance(context)
-    private val fileObjects = javaFiles.mapTo(ListBuffer()) { fileManager.getRegularFile(it) }.toList()
+    private val fileObjects = fileManager.getJavaFileObjectsFromFiles(javaFiles).mapTo(ListBuffer()) { it }.toList()
     private val compilationUnits: JavacList<JCTree.JCCompilationUnit> = fileObjects.mapTo(ListBuffer(), javac::parse).toList()
 
     private val treeBasedJavaClasses: Map<ClassId, TreeBasedClass>
@@ -165,7 +163,7 @@ class JavacWrapper(
         var errorCount = errorCount()
         if (errorCount > 0) return false
 
-        val javaFilesNumber = fileObjects.length()
+        val javaFilesNumber = fileObjects.size
         if (javaFilesNumber == 0) return true
 
         fileManager.setClassPathForCompilation(outDir)
@@ -328,7 +326,7 @@ class JavacWrapper(
         return findSimplePackageInSymbols(fqName)
     }
 
-    private fun JavacFileManager.setClassPathForCompilation(outDir: File?) = apply {
+    private fun StandardJavaFileManager.setClassPathForCompilation(outDir: File?) = apply {
         (outDir ?: outputDirectory)?.let { outputDir ->
             if (outputDir.exists()) {
                 fileManager.setLocation(CLASS_PATH, fileManager.getLocation(CLASS_PATH) + outputDir)
