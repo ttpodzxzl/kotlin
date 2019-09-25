@@ -470,7 +470,6 @@ open class KotlinMPPGradleProjectResolver : AbstractProjectResolverExtension() {
                                 .getOrPut(it) { mutableListOf() }
                                 .add(CompilationWithDependencies(compilation, substitutedDependencies))
                         }
-                        compilation.kotlinTaskProperties
                         if (sourceSet.fullName() == compilation.fullName()) continue
                         val targetDataNode = getSiblingKotlinModuleData(sourceSet, gradleModule, ideModule, resolverCtx) ?: continue
                         addDependency(dataNode, targetDataNode, sourceSet.isTestModule)
