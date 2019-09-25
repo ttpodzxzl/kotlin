@@ -94,14 +94,20 @@ internal abstract class KtUltraLightMethod(
 
     abstract val methodDescriptor: FunctionDescriptor?
 
-    private val lazyTypeErasure = lazyPub {
+    private val lazyParameterTypeErasure = lazyPub {
         methodDescriptor
             ?.getSpecialSignatureInfo()
-            ?.isObjectReplacedWithTypeParameter
+            ?.let { info ->
+                when {
+                    info.valueParametersSignature === null -> false
+                    info.isObjectReplacedWithTypeParameter -> true
+                    else -> true
+                }
+            }
             ?: false
     }
 
-    val checkNeedToErasureParametersTypes: Boolean by lazyTypeErasure
+    val checkNeedToErasureParametersTypes: Boolean by lazyParameterTypeErasure
 
     override fun equals(other: Any?): Boolean = this === other
 
