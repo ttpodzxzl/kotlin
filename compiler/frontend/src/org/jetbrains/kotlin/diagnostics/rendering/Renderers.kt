@@ -155,6 +155,13 @@ object Renderers {
     val RENDER_TYPE = SmartTypeRenderer(DescriptorRenderer.FQ_NAMES_IN_TYPES.withOptions { parameterNamesInFunctionalTypes = false })
 
     @JvmField
+    val TYPE_WITHOUT_ANNOTATIONS = SmartTypeRenderer(DescriptorRenderer.FQ_NAMES_IN_TYPES.withOptions {
+        parameterNamesInFunctionalTypes = false
+        annotationFilter = { false }
+    })
+
+
+    @JvmField
     val RENDER_POSITION_VARIANCE = Renderer { variance: Variance ->
         when (variance) {
             Variance.INVARIANT -> "invariant"

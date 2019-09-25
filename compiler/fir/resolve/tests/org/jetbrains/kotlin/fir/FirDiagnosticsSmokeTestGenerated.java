@@ -826,6 +826,11 @@ public class FirDiagnosticsSmokeTestGenerated extends AbstractFirDiagnosticsSmok
             runTest("compiler/testData/diagnostics/tests/annotations/annotationOnParameterInFunctionType.kt");
         }
 
+        @TestMetadata("annotationRenderingInTypes.kt")
+        public void testAnnotationRenderingInTypes() throws Exception {
+            runTest("compiler/testData/diagnostics/tests/annotations/annotationRenderingInTypes.kt");
+        }
+
         @TestMetadata("AnnotationsForClasses.kt")
         public void testAnnotationsForClasses() throws Exception {
             runTest("compiler/testData/diagnostics/tests/annotations/AnnotationsForClasses.kt");

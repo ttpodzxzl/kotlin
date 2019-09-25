@@ -36,7 +36,10 @@ object IdeRenderers {
         descriptors.joinToString("") { "<li>${HTML.render(it, context)}</li>" }
     }
 
-    @JvmField val HTML_RENDER_TYPE = SmartTypeRenderer(DescriptorRenderer.HTML.withOptions { parameterNamesInFunctionalTypes = false })
+    @JvmField val HTML_RENDER_TYPE = SmartTypeRenderer(DescriptorRenderer.HTML.withOptions {
+        parameterNamesInFunctionalTypes = false
+        annotationFilter = { false }
+    })
 
     @JvmField val HTML_NONE_APPLICABLE_CALLS = Renderer {
         calls: Collection<ResolvedCall<*>> ->

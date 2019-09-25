@@ -268,7 +268,8 @@ object ExcludedTypeAnnotations {
 object AnnotationsInDiagnosticMessages {
     val whitelist = setOf(
         FqName("kotlin.SinceKotlin"),
-        FqName("kotlin.internal.NoInfer")
+        FqName("org.jetbrains.annotations.NotNull"),
+        FqName("org.jetbrains.annotations.Nullable")
     )
 }
 
