@@ -83,7 +83,9 @@ object JavacWrapperRegistrar {
 
             override fun isCanceled(): Boolean = false
 
-            override fun consumeOutputFile(obj: OutputFileObject) {}
+            override fun consumeOutputFile(obj: OutputFileObject) {
+                obj.content?.saveToFile(obj.file)
+            }
 
         }
         val jpsFileManager = JpsJavacFileManager(jpsContext, true, emptyList())
