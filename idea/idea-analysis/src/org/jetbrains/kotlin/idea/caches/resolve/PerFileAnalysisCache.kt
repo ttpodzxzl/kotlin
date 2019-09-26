@@ -21,8 +21,6 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Getter
-import com.intellij.openapi.util.ModificationTracker
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.*
 import org.jetbrains.kotlin.analyzer.AnalysisResult
@@ -37,8 +35,7 @@ import org.jetbrains.kotlin.diagnostics.Diagnostic
 import org.jetbrains.kotlin.diagnostics.DiagnosticUtils
 import org.jetbrains.kotlin.frontend.di.createContainerForLazyBodyResolve
 import org.jetbrains.kotlin.idea.caches.project.getModuleInfo
-import org.jetbrains.kotlin.idea.caches.trackers.cleanInBlockModificationCount
-import org.jetbrains.kotlin.idea.caches.trackers.inBlockModificationCount
+import org.jetbrains.kotlin.idea.caches.trackers.inBlockModifications
 import org.jetbrains.kotlin.idea.project.IdeaModuleStructureOracle
 import org.jetbrains.kotlin.idea.project.TargetPlatformDetector
 import org.jetbrains.kotlin.idea.project.findAnalyzerServices
@@ -63,15 +60,15 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
     private val codeFragmentAnalyzer = componentProvider.get<CodeFragmentAnalyzer>()
     private val bodyResolveCache = componentProvider.get<BodyResolveCache>()
 
-    private val cache = HashMap<PsiElement, CachedValue<AnalysisResult>>()
+    private val cache = HashMap<PsiElement, AnalysisResult>()
 
-    private fun lookUp(analyzableElement: KtElement): CachedValue<AnalysisResult>? {
+    private fun lookUp(analyzableElement: KtElement): AnalysisResult? {
         // Looking for parent elements that are already analyzed
         // Also removing all elements whose parents are already analyzed, to guarantee consistency
         val descendantsOfCurrent = arrayListOf<PsiElement>()
         val toRemove = hashSetOf<PsiElement>()
 
-        var result: CachedValue<AnalysisResult>? = null
+        var result: AnalysisResult? = null
         for (current in analyzableElement.parentsWithSelf) {
             val cached = cache[current]
             if (cached != null) {
@@ -79,8 +76,6 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
                 toRemove.addAll(descendantsOfCurrent)
                 descendantsOfCurrent.clear()
             }
-
-            if (isModified(current)) break
 
             descendantsOfCurrent.add(current)
         }
@@ -90,80 +85,66 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
         return result
     }
 
-    private fun isModified(current: PsiElement): Boolean {
-        // Modified KtNamedFunction provides its own AnalysisResult
-        // TODO: could be generalized as well for other cases those could provide incremental analysis
-
-        return current is KtNamedFunction && current.inBlockModificationCount > 0
-    }
-
     fun getAnalysisResults(element: KtElement): AnalysisResult {
-        assert(element.containingKtFile == file) { "Wrong file. Expected $file, but was ${element.containingKtFile}" }
+        val ktFile = element.containingKtFile
+        assert(ktFile == file) { "Wrong file. Expected $file, but was $ktFile" }
 
         val analyzableParent = KotlinResolveDataProvider.findAnalyzableParent(element)
 
-        // cache does not contain AnalysisResult per each kt/psi element
-        // instead it looks up analysis for its parents - see lookUp(analyzableElement)
+        val inBlockModifications = ktFile.inBlockModifications
+        return synchronized(this) {
 
-        // top element (ktFile) always contains analysis for entire file
-        // cache contains analysis of one of parents if
-        // that parent (e.g. ktNamedFunction) is modified and could provide incremental analysis
-        // - in this case top element has details about what item performed incremental analysis (its parent ctx, parent diagnostics etc)
+            val analysisResult = cache[ktFile]
+            // step 1: perform incremental analysis IF there is a cached result for ktFile and there are inBlockModifications
+            if (analysisResult != null && inBlockModifications.isNotEmpty()) {
+                var result = analysisResult!!
+                val iterator = inBlockModifications.iterator()
+                for (inBlockModification in iterator) {
+                    val inBlockResult = analyze(inBlockModification)
+                    result = analysisResult(inBlockModification, inBlockResult, ktFile, result)
 
-        return synchronized<AnalysisResult>(this) {
-            val cached = lookUp(analyzableParent)
-            if (cached != null) return@synchronized cached.value
-
-            val result =
-                // TODO: could be generalized as well for other cases those could provide incremental analysis
-                if (analyzableParent is KtNamedFunction) {
-                    CachedValuesManager.getManager(file.project).createCachedValue(
-                        {
-                            val parentCache = cache[file] as? SimpleCachedValue
-                            val calculatedAnalysisResult: AnalysisResult =
-                                if (parentCache != null && analyzableParent.inBlockModificationCount > 0L) {
-                                    val result = analyze(analyzableParent)
-
-                                    val parentAnalysis = parentCache.value
-                                    val newBindingCtx = mergeContexts(result, parentAnalysis, analyzableParent)
-
-                                    val newParentAnalysis = if (parentAnalysis.isError())
-                                        AnalysisResult.internalError(newBindingCtx, parentAnalysis.error)
-                                    else AnalysisResult.success(
-                                        newBindingCtx,
-                                        parentAnalysis.moduleDescriptor,
-                                        parentAnalysis.shouldGenerateCode
-                                    )
-                                    cache[file] = SimpleCachedValue(newParentAnalysis)
-
-                                    newParentAnalysis
-                                } else {
-                                    parentCache?.value ?: analyze(analyzableParent)
-                                }
-
-                            CachedValueProvider.Result.create(calculatedAnalysisResult,
-                                                              ModificationTracker { analyzableParent.inBlockModificationCount })
-                        }, false
-                    )
-                } else {
-                    SimpleCachedValue(analyze(analyzableParent))
+                    iterator.remove()
                 }
+            }
+
+            // cache does not contain AnalysisResult per each kt/psi element
+            // instead it looks up analysis for its parents - see lookUp(analyzableElement)
+
+            // step 2: return result if it is cached
+            lookUp(analyzableParent)?.let {
+                return@synchronized it
+            }
+
+            // step 3: perform analyze of analyzableParent IF nothing has been cached
+            val result = analyze(analyzableParent)
             cache[analyzableParent] = result
 
-            return@synchronized result.value
+            // step 4: merge result into ktFile result IF this item is not top element and analysis is available
+            if (analyzableParent !is KtFile && cache[ktFile] != null) {
+                analysisResult(analyzableParent, result, ktFile, cache[ktFile]!!)
+                inBlockModifications.clear()
+            }
+
+            return@synchronized result
         }
     }
 
-    private fun findAllChildren(element: KtElement): Set<PsiElement> {
-        val set = mutableSetOf<PsiElement>()
-        val visitor = object : KtTreeVisitor<Unit>() {
-            override fun visitKtElement(ktElement: KtElement, data: Unit): Void? {
-                set.add(ktElement)
-                return super.visitKtElement(ktElement, Unit)
-            }
-        }
-        element.acceptChildren(visitor, Unit)
-        return set.toSet()
+    private fun analysisResult(
+        element: KtElement,
+        elementResult: AnalysisResult,
+        parentElement: KtFile,
+        parentResult: AnalysisResult
+    ): AnalysisResult {
+        val newBindingCtx = mergeContexts(elementResult, parentResult, element)
+        val newFileAnalysis = if (parentResult.isError())
+            AnalysisResult.internalError(newBindingCtx, parentResult.error)
+        else AnalysisResult.success(
+            newBindingCtx,
+            parentResult.moduleDescriptor,
+            parentResult.shouldGenerateCode
+        )
+        cache[parentElement] = newFileAnalysis
+        return newFileAnalysis
     }
 
     private fun mergeContexts(
@@ -181,9 +162,6 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
                 if (parentCtx.element == element) parentCtx else {
                     // clean up cached analysis result for prev element as it is incorporated into this one
                     cache.remove(parentCtx.element)
-                    // have to clean up modification traces
-                    if (parentCtx.element is KtNamedFunction) parentCtx.element.cleanInBlockModificationCount()
-
                     null
                 }
             } else null
@@ -224,6 +202,18 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
         )
     }
 
+    private fun findAllChildren(element: KtElement): Set<PsiElement> {
+        val set = mutableSetOf<PsiElement>()
+        val visitor = object : KtTreeVisitor<Unit>() {
+            override fun visitKtElement(ktElement: KtElement, data: Unit): Void? {
+                set.add(ktElement)
+                return super.visitKtElement(ktElement, Unit)
+            }
+        }
+        element.acceptChildren(visitor, Unit)
+        return set.toSet()
+    }
+
     private fun analyze(analyzableElement: KtElement): AnalysisResult {
         val project = analyzableElement.project
         if (DumbService.isDumb(project)) {
@@ -251,16 +241,6 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
             return AnalysisResult.internalError(BindingContext.EMPTY, e)
         }
     }
-}
-
-private class SimpleCachedValue<T>(private val value: T) : CachedValue<T> {
-    override fun getValue(): T = value
-
-    override fun getUpToDateOrNull(): Getter<T> = throw UnsupportedOperationException()
-
-    override fun hasUpToDateValue(): Boolean = throw UnsupportedOperationException()
-
-    override fun getValueProvider(): CachedValueProvider<T> = throw UnsupportedOperationException()
 }
 
 private class StackedCompositeBindingContext(
@@ -296,8 +276,7 @@ private class StackedCompositeBindingContext(
         if (element != null) {
             return ctx(element)!![slice, key]
         }
-        val value = delegates.asSequence().map { it[slice, key] }.firstOrNull { it != null }
-        return value
+        return delegates.asSequence().map { it[slice, key] }.firstOrNull { it != null }
     }
 
     override fun <K, V> getKeys(slice: WritableSlice<K, V>?): Collection<K> {
@@ -355,9 +334,9 @@ private object KotlinResolveDataProvider {
         if (analyzableElement is KtClassInitializer) return analyzableElement.containingDeclaration
         return analyzableElement
         // if none of the above worked, take the outermost declaration
-                ?: PsiTreeUtil.getTopmostParentOfType(element, KtDeclaration::class.java)
-                // if even that didn't work, take the whole file
-                ?: element.containingKtFile
+            ?: PsiTreeUtil.getTopmostParentOfType(element, KtDeclaration::class.java)
+            // if even that didn't work, take the whole file
+            ?: element.containingKtFile
     }
 
     fun analyze(

@@ -28,7 +28,6 @@ import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.parents
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.getTopmostParentOfType
 import org.jetbrains.kotlin.psi.psiUtil.isAncestor
 
@@ -163,8 +162,7 @@ class KotlinCodeBlockModificationListener(
         }
 
         private fun incOutOfBlockModificationCount(file: KtFile) {
-            file.collectDescendantsOfType<KtNamedFunction>(canGoInside = { it !is KtNamedFunction })
-                .forEach { it.cleanInBlockModificationCount() }
+            file.cleanInBlockModifications()
 
             val count = file.getUserData(FILE_OUT_OF_BLOCK_MODIFICATION_COUNT) ?: 0
             file.putUserData(FILE_OUT_OF_BLOCK_MODIFICATION_COUNT, count + 1)
@@ -179,14 +177,20 @@ class KotlinCodeBlockModificationListener(
         private fun incInBlockModificationCount(elements: Array<ASTNode>): Boolean {
             val inBlockElements = mutableSetOf<KtNamedFunction>()
             for (element in elements) {
+                // skip fake PSI elements like `IntellijIdeaRulezzz$`
+                if (!element.psi.isPhysical) continue
+
                 for (parent in element.psi.parents()) {
-                    // support chain of KtNamedFunction -> KtClassBody -> KtClass -> KtFile
+                    if (parent is KtFile) break
                     // TODO: could be generalized as well for other cases those could provide incremental analysis
-                    if (parent is KtNamedFunction && ((parent.parent?.parent?.parent ?: null) is KtFile)) {
+                    if (parent !is KtNamedFunction) continue
+
+                    // top level function or regular class function
+                    // TODO: [VD] have to check nested functions as well
+                    if (parent.parent ?: null is KtFile || (parent.parent?.parent?.parent ?: null) is KtFile) {
                         inBlockElements.add(parent)
                         break
                     }
-                    if (parent is KtFile) break
                 }
             }
             if (inBlockElements.isNotEmpty()) {
@@ -196,8 +200,8 @@ class KotlinCodeBlockModificationListener(
         }
 
         private fun incInBlockModificationCount(namedFunction: KtNamedFunction) {
-            val count = namedFunction.getUserData(IN_BLOCK_MODIFICATION_COUNT) ?: 0
-            namedFunction.putUserData(IN_BLOCK_MODIFICATION_COUNT, count + 1)
+            val inBlockModifications = namedFunction.containingKtFile.inBlockModifications
+            inBlockModifications.add(namedFunction)
         }
 
         fun isFormattingChange(changeSet: TreeChangeEvent): Boolean =
@@ -271,7 +275,7 @@ val KtFile.perFileModificationTracker: ModificationTracker
 
 private val FILE_OUT_OF_BLOCK_MODIFICATION_COUNT = Key<Long>("FILE_OUT_OF_BLOCK_MODIFICATION_COUNT")
 
-private val IN_BLOCK_MODIFICATION_COUNT = Key<Long>("IN_BLOCK_MODIFICATION_COUNT")
+private val IN_BLOCK_MODIFICATIONS = Key<MutableCollection<KtElement>>("IN_BLOCK_MODIFICATIONS")
 
 val KtFile.outOfBlockModificationCount: Long by NotNullableUserDataProperty(FILE_OUT_OF_BLOCK_MODIFICATION_COUNT, 0)
 
@@ -279,9 +283,9 @@ val KtFile.outOfBlockModificationCount: Long by NotNullableUserDataProperty(FILE
  * inBlockModificationCount means how many changes have been made since last outOfBlockModificationCount for this item
  * it is reset to 0 on any outOfBlockModificationCount
  */
-val KtNamedFunction.inBlockModificationCount: Long by NotNullableUserDataProperty(IN_BLOCK_MODIFICATION_COUNT, 0)
 
-fun KtNamedFunction.cleanInBlockModificationCount() {
-    if ((getUserData(IN_BLOCK_MODIFICATION_COUNT) ?: 0) > 0)
-        putUserData(IN_BLOCK_MODIFICATION_COUNT, 0)
+val KtFile.inBlockModifications: MutableCollection<KtElement> by NotNullableUserDataProperty(IN_BLOCK_MODIFICATIONS, mutableSetOf())
+
+fun KtFile.cleanInBlockModifications() {
+    getUserData(IN_BLOCK_MODIFICATIONS)?.clear()
 }
