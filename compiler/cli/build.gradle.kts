@@ -27,6 +27,7 @@ dependencies {
     compile(files("${System.getProperty("java.home")}/../lib/tools.jar"))
     compileOnly(intellijCoreDep()) { includeJars("intellij-core") }
     compileOnly(intellijDep()) { includeIntellijCoreJarDependencies(project) }
+    compileOnly(jpsStandalone()) { includeJars("jps-builders", "jps-builders-6") }
 
     testCompile(project(":compiler:backend"))
     testCompile(project(":compiler:cli"))
