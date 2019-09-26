@@ -40,12 +40,6 @@ abstract class AbstractScriptEvaluationExtension : ScriptEvaluationExtension {
         scriptCompilationConfiguration: ScriptCompilationConfiguration
     ): ResultWithDiagnostics<CompiledScript<*>>
 
-    abstract suspend fun preprocessEvaluation(
-        scriptEvaluator: ScriptEvaluator,
-        scriptCompilationConfiguration: ScriptCompilationConfiguration,
-        evaluationConfiguration: ScriptEvaluationConfiguration
-    )
-
     override fun eval(
         arguments: CommonCompilerArguments,
         configuration: CompilerConfiguration,
@@ -99,7 +93,6 @@ abstract class AbstractScriptEvaluationExtension : ScriptEvaluationExtension {
                 return@runBlocking ExitCode.COMPILATION_ERROR
             }
 
-            preprocessEvaluation(scriptEvaluator, scriptCompilationConfiguration, evaluationConfiguration)
             val evalResult = scriptEvaluator.invoke(compiledScript, evaluationConfiguration).valueOr {
                 for (report in it.reports) {
                     messageCollector.report(report.severity.toCompilerMessageSeverity(), report.render(withSeverity = false))

@@ -53,14 +53,6 @@ class JvmCliScriptEvaluationExtension : AbstractScriptEvaluationExtension() {
         return scriptCompiler.compile(script, scriptCompilationConfiguration)
     }
 
-    override suspend fun preprocessEvaluation(
-        scriptEvaluator: ScriptEvaluator,
-        scriptCompilationConfiguration: ScriptCompilationConfiguration,
-        evaluationConfiguration: ScriptEvaluationConfiguration
-    ) {
-        //do nothing
-    }
-
     override fun isAccepted(arguments: CommonCompilerArguments): Boolean =
         arguments is K2JVMCompilerArguments && arguments.script
 }
