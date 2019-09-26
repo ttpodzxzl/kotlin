@@ -64,8 +64,6 @@ object JavacWrapperRegistrar {
         val standardFileManager = JavacFileManager(context, false, Charset.defaultCharset())
         standardFileManager.setSymbolFileEnabled(false)
         val jpsContext = object : JpsJavacFileManager.Context {
-            //var jpsFileManager: StandardJavaFileManager? = null
-
             override fun reportMessage(kind: Diagnostic.Kind, message: String) {
                 messageCollector.report(
                     when (kind) {
@@ -79,7 +77,7 @@ object JavacWrapperRegistrar {
             }
 
             override fun getStandardFileManager(): StandardJavaFileManager =
-                /*jpsFileManager ?: */ standardFileManager
+                standardFileManager
 
             override fun isCanceled(): Boolean = false
 
@@ -89,7 +87,6 @@ object JavacWrapperRegistrar {
 
         }
         val jpsFileManager = JpsJavacFileManager(jpsContext, true, emptyList())
-        //jpsContext.jpsFileManager = jpsFileManager
         context.put(JavaFileManager::class.java, jpsFileManager)
 
         val jvmClasspathRoots = configuration.jvmClasspathRoots
