@@ -95,10 +95,18 @@ object JavacWrapperRegistrar {
         val compileJava = configuration.getBoolean(JVMConfigurationKeys.COMPILE_JAVA)
         val kotlinSupertypesResolver = JavacWrapperKotlinResolverImpl(lightClassGenerationSupport)
 
-        val javacWrapper = JavacWrapper(
+        if (outputDirectory != null) {
+            jpsFileManager.setOutputDirectories(mapOf(outputDirectory to jvmClasspathRoots.toSet()))
+        }
+
+        val javacWrapper = object : JavacWrapper(
             javaFiles, kotlinFiles, arguments, jvmClasspathRoots, bootClasspath, sourcePath,
             kotlinSupertypesResolver, packagePartsProviders, compileJava, outputDirectory, context
-        )
+        ) {
+            override fun setOutputDirectories(map: Map<File, Set<File>>) {
+                jpsFileManager.setOutputDirectories(map)
+            }
+        }
 
         project.registerService(JavacWrapper::class.java, javacWrapper)
 

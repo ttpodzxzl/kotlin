@@ -26,6 +26,8 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.sun.source.tree.CompilationUnitTree
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Symtab
+import com.sun.tools.javac.file.JavacFileManager
+import com.sun.tools.javac.jvm.ClassReader
 import com.sun.tools.javac.main.JavaCompiler
 import com.sun.tools.javac.model.JavacElements
 import com.sun.tools.javac.model.JavacTypes
@@ -52,11 +54,11 @@ import javax.tools.StandardJavaFileManager
 import javax.tools.StandardLocation.*
 import com.sun.tools.javac.util.List as JavacList
 
-class JavacWrapper(
+abstract class JavacWrapper(
     javaFiles: Collection<File>,
     kotlinFiles: Collection<KtFile>,
     arguments: Array<String>?,
-    jvmClasspathRoots: List<File>,
+    private val jvmClasspathRoots: List<File>,
     bootClasspath: List<File>?,
     sourcePath: List<File>?,
     val kotlinResolver: JavacWrapperKotlinResolver,
@@ -326,14 +328,19 @@ class JavacWrapper(
         return findSimplePackageInSymbols(fqName)
     }
 
+    abstract fun setOutputDirectories(map: Map<File, Set<File>>)
+
     private fun StandardJavaFileManager.setClassPathForCompilation(outDir: File?) = apply {
         (outDir ?: outputDirectory)?.let { outputDir ->
             if (outputDir.exists()) {
                 fileManager.setLocation(CLASS_PATH, fileManager.getLocation(CLASS_PATH) + outputDir)
             }
             outputDir.mkdirs()
-            fileManager.setLocation(CLASS_OUTPUT, listOf(outputDir))
-
+            if (fileManager is JavacFileManager) {
+                fileManager.setLocation(CLASS_OUTPUT, listOf(outputDir))
+            } else {
+                setOutputDirectories(mapOf(outputDir to jvmClasspathRoots.toSet()))
+            }
         }
 
 //        val reader = ClassReader.instance(context)
