@@ -220,20 +220,6 @@ class K2JVMCompiler : CLICompiler<K2JVMCompilerArguments>() {
         return PluginCliParser.loadPluginsSafe(pluginClasspaths, pluginOptions, configuration)
     }
 
-    private fun tryLoadScriptingPluginFromCurrentClassLoader(configuration: CompilerConfiguration): Boolean = try {
-        val pluginRegistrarClass = PluginCliParser::class.java.classLoader.loadClass(
-            "org.jetbrains.kotlin.scripting.compiler.plugin.ScriptingCompilerConfigurationComponentRegistrar"
-        )
-        val pluginRegistrar = pluginRegistrarClass.newInstance() as? ComponentRegistrar
-        if (pluginRegistrar != null) {
-            configuration.add(ComponentRegistrar.PLUGIN_COMPONENT_REGISTRARS, pluginRegistrar)
-            true
-        } else false
-    } catch (_: Throwable) {
-        // TODO: add finer error processing and logging
-        false
-    }
-
     private fun createCoreEnvironment(
         rootDisposable: Disposable,
         configuration: CompilerConfiguration,
