@@ -327,9 +327,7 @@ class KotlinBuilder : ModuleLevelBuilder(BuilderCategory.SOURCE_PROCESSOR) {
         val switchOffJavaBuilder = chunk.representativeTarget().module.kotlinCompilerSettings.additionalArguments.let {
             "-Xuse-javac" in it && "-Xcompile-java" in it
         }
-        if (switchOffJavaBuilder) {
-            JavaBuilder.IS_ENABLED[context] = true
-        }
+        JavaBuilder.IS_ENABLED[context] = true
 
         // Workaround for Android Studio
         if (representativeTarget is KotlinJvmModuleBuildTarget && !JavaBuilder.IS_ENABLED[context, true]) {
