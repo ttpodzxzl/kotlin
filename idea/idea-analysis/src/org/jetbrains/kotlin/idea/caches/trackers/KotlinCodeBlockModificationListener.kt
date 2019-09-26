@@ -185,8 +185,8 @@ class KotlinCodeBlockModificationListener(
                     // TODO: could be generalized as well for other cases those could provide incremental analysis
                     if (parent !is KtNamedFunction) continue
 
-                    // top level function or regular class function
-                    // TODO: [VD] have to check nested functions as well
+                    // WARNING: top level function or regular class function only
+                    // as it is not possible to perform incremental analysis for local declarations
                     if (parent.parent ?: null is KtFile || (parent.parent?.parent?.parent ?: null) is KtFile) {
                         inBlockElements.add(parent)
                         break

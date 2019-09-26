@@ -21,6 +21,7 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.ModificationTracker
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.*
 import org.jetbrains.kotlin.analyzer.AnalysisResult
@@ -44,7 +45,7 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 import org.jetbrains.kotlin.resolve.*
 import org.jetbrains.kotlin.resolve.diagnostics.Diagnostics
-import org.jetbrains.kotlin.resolve.diagnostics.SimpleDiagnostics
+import org.jetbrains.kotlin.resolve.diagnostics.DiagnosticsElementsCache
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.resolve.lazy.ResolveSession
 import org.jetbrains.kotlin.resolve.source.getPsi
@@ -101,7 +102,7 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
                 val iterator = inBlockModifications.iterator()
                 for (inBlockModification in iterator) {
                     val inBlockResult = analyze(inBlockModification)
-                    result = analysisResult(inBlockModification, inBlockResult, ktFile, result)
+                    result = mergeResults(inBlockModification, inBlockResult, ktFile, result)
 
                     iterator.remove()
                 }
@@ -115,21 +116,20 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
                 return@synchronized it
             }
 
-            // step 3: perform analyze of analyzableParent IF nothing has been cached
+            // step 3: return ktFile analyze if it is available (as it accumulate all results)
+            if (cache[ktFile] != null) {
+                return@synchronized cache[ktFile]!!
+            }
+
+            // step 4: perform analyze of analyzableParent as nothing has been cached yet
             val result = analyze(analyzableParent)
             cache[analyzableParent] = result
-
-            // step 4: merge result into ktFile result IF this item is not top element and analysis is available
-            if (analyzableParent !is KtFile && cache[ktFile] != null) {
-                analysisResult(analyzableParent, result, ktFile, cache[ktFile]!!)
-                inBlockModifications.clear()
-            }
 
             return@synchronized result
         }
     }
 
-    private fun analysisResult(
+    private fun mergeResults(
         element: KtElement,
         elementResult: AnalysisResult,
         parentElement: KtFile,
@@ -184,7 +184,7 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
             }.toList()
         }
 
-        val diagnostics = parentDiagnostics + thisDiagnosticsAll // copy all diagnostics those belongs to `element`
+        val diagnosticList = parentDiagnostics + thisDiagnosticsAll // copy all diagnostics those belongs to `element`
 
         // how long it could be a list of delegates ? is it worth to perform full analysis when we got too deep ?
         val depth = when (parentCtx) {
@@ -194,11 +194,18 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
 
         val ctx = sameElementParentCtx?.parentContext ?: parentCtx
 
+        val diagnostics: Diagnostics = if (diagnosticList.isEmpty()) Diagnostics.EMPTY else
+            MergedDiagnostics(
+                diagnosticList,
+                parentCtx.diagnostics.modificationTracker
+            )
+
         return StackedCompositeBindingContext(
             depth,
             element, findAllChildren(element),
             thisCtx, ctx,
-            parentDiagnostics, SimpleDiagnostics(diagnostics)
+            parentDiagnostics,
+            diagnostics
         )
     }
 
@@ -242,6 +249,21 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
         }
     }
 }
+
+private class MergedDiagnostics(diagnostics: Collection<Diagnostic>, override val modificationTracker: ModificationTracker) : Diagnostics {
+    //copy to prevent external change
+    private val diagnostics = ArrayList(diagnostics)
+
+    @Suppress("UNCHECKED_CAST")
+    private val elementsCache = DiagnosticsElementsCache(this, { true })
+
+    override fun all() = diagnostics
+
+    override fun forElement(psiElement: PsiElement) = elementsCache.getDiagnostics(psiElement)
+
+    override fun noSuppression() = this
+}
+
 
 private class StackedCompositeBindingContext(
     val depth: Int, // depth of stack over original ktFile bindingContext
