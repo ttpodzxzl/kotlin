@@ -61,7 +61,6 @@ import org.jetbrains.kotlin.resolve.scopes.utils.addImportingScope
 import org.jetbrains.kotlin.resolve.scopes.utils.collectFunctions
 import org.jetbrains.kotlin.types.typeUtil.isSubtypeOf
 import org.jetbrains.kotlin.util.OperatorNameConventions
-import org.jetbrains.kotlin.utils.ifEmpty
 import java.util.*
 
 /**
@@ -288,7 +287,7 @@ internal class ImportFix(expression: KtSimpleNameExpression) : OrdinaryImportFix
     ): List<DeclarationDescriptor> {
 
         val element = element ?: return emptyList()
-        if (element.isImportDirectiveExpression() || isSelectorInQualified(element)) return emptyList()
+        if (element.isImportDirectiveExpression()) return emptyList()
 
         val result = ArrayList<DeclarationDescriptor>()
 
@@ -306,7 +305,10 @@ internal class ImportFix(expression: KtSimpleNameExpression) : OrdinaryImportFix
             ).orEmpty()
 
 
-        val explicitReceiverTypes = actualReceiverTypes.filterNot { it.implicit }
+        val explicitReceiverType = actualReceiverTypes
+            .filterNot { it.implicit }
+            .also { require(it.size <= 1) { "There can be at most one explicit receiver!" } }
+            .singleOrNull()
 
         val checkDispatchReceiver = when (callTypeAndReceiver) {
             is CallTypeAndReceiver.OPERATOR, is CallTypeAndReceiver.INFIX -> true
@@ -315,7 +317,7 @@ internal class ImportFix(expression: KtSimpleNameExpression) : OrdinaryImportFix
 
         val processor = { descriptor: CallableDescriptor ->
             if (descriptor.canBeReferencedViaImport() && filterByCallType(descriptor)
-                && descriptor.isValidByReceiversFor(explicitReceiverTypes, actualReceiverTypes, checkDispatchReceiver)
+                && descriptor.isValidByReceiversFor(explicitReceiverType, actualReceiverTypes, checkDispatchReceiver)
             ) {
                 result.add(descriptor)
             }
@@ -337,18 +339,32 @@ internal class ImportFix(expression: KtSimpleNameExpression) : OrdinaryImportFix
         return result
     }
 
-
+    /**
+     * Checks that:
+     *
+     * 1. [this] descriptor receivers are satisfied;
+     * 2. [explicitReceiverType] (if not null) is actually required for the descriptor.
+     *
+     * We need the last check to ensure that when the receiver is clear (like in `"".test()`), we do not
+     * try to import any `test()` method from the world - only ones that have subclasses of string as
+     * their receiver.
+     */
     private fun CallableDescriptor.isValidByReceiversFor(
-        explicitReceiverTypes: Collection<ReceiverType>,
+        explicitReceiverType: ReceiverType?,
         allReceiverTypes: Collection<ReceiverType>,
         checkDispatchReceiver: Boolean
     ): Boolean {
         val bothReceivers = listOfNotNull(extensionReceiverParameter, dispatchReceiverParameter.takeIf { checkDispatchReceiver })
 
-        val receiverTypesPerReceiver = generateSequence(explicitReceiverTypes.ifEmpty { allReceiverTypes }) { allReceiverTypes }
+        if (explicitReceiverType != null && bothReceivers.isEmpty()) return false
+
+        val receiverTypesPerReceiver = listOf(
+            explicitReceiverType?.let(::listOf) ?: allReceiverTypes,
+            allReceiverTypes
+        )
 
         return bothReceivers
-            .zip(receiverTypesPerReceiver.asIterable())
+            .zip(receiverTypesPerReceiver)
             .all { (receiver, possibleTypes) -> possibleTypes.any { it.type.isSubtypeOf(receiver.type) } }
     }
 

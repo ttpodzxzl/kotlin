@@ -1886,6 +1886,11 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
             runTest("idea/testData/quickfix/autoImports/notForThisLabel.kt");
         }
 
+        @TestMetadata("objectMemberExtensionFunctionImportWhenExplicitReceiverPresent.kt")
+        public void testObjectMemberExtensionFunctionImportWhenExplicitReceiverPresent() throws Exception {
+            runTest("idea/testData/quickfix/autoImports/objectMemberExtensionFunctionImportWhenExplicitReceiverPresent.kt");
+        }
+
         @TestMetadata("sAMConstructorFromLambda.kt")
         public void testSAMConstructorFromLambda() throws Exception {
             runTest("idea/testData/quickfix/autoImports/sAMConstructorFromLambda.kt");
